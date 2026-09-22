@@ -1,0 +1,16 @@
+name: custom-request-block-finalizer
+displayName: Request Block Finalizer
+version: v1.0.0
+description: >
+  Converts shared request findings into a consistent fail-closed HTTP 422 decision before provider invocation.
+parameters:
+  type: object
+  additionalProperties: true
+  properties:
+    enabled:
+      type: boolean
+      default: true
+systemParameters:
+  type: object
+  additionalProperties: false
+  properties: {}

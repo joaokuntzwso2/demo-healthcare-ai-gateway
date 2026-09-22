@@ -1,0 +1,24 @@
+apiVersion: gateway.api-platform.wso2.com/v1alpha1
+kind: LlmProvider
+metadata:
+  name: enterprise-openai
+spec:
+  displayName: Enterprise OpenAI
+  version: v1.0
+  template: openai
+  context: /enterprise-openai
+  upstream:
+    url: https://api.openai.com/v1
+    auth:
+      type: api-key
+      header: Authorization
+      value: Bearer __OPENAI_API_KEY__
+  accessControl:
+    mode: deny_all
+    exceptions:
+      - path: /chat/completions
+        methods: [POST]
+      - path: /models
+        methods: [GET]
+      - path: /models/{modelId}
+        methods: [GET]

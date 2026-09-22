@@ -1,0 +1,86 @@
+version: v1
+policies:
+    - name: api-key-auth
+      version: v1.2.1
+      gomodule: github.com/wso2/gateway-controllers/policies/api-key-auth@v1
+    - name: host-rewrite
+      version: v1.0.1
+      gomodule: github.com/wso2/gateway-controllers/policies/host-rewrite@v1
+    - name: request-rewrite
+      version: v1.0.2
+      gomodule: github.com/wso2/gateway-controllers/policies/request-rewrite@v1
+    - name: respond
+      version: v1.0.1
+      gomodule: github.com/wso2/gateway-controllers/policies/respond@v1
+    - name: set-headers
+      version: v1.1.0
+      gomodule: github.com/wso2/gateway-controllers/policies/set-headers@v1
+    - name: subscription-validation
+      version: v1.0.3
+      gomodule: github.com/wso2/gateway-controllers/policies/subscription-validation@v1
+    - name: custom-model-allowlist-guardrail
+      version: v1.0.0
+      filePath: policies/custom-model-allowlist-guardrail
+    - name: custom-resource-budget-guardrail
+      version: v1.0.0
+      filePath: policies/custom-resource-budget-guardrail
+    - name: canonicalize-and-classify
+      version: v1.0.0
+      filePath: policies/canonicalize-and-classify
+    - name: custom-jailbreak-authority-bypass-guardrail
+      version: v1.0.0
+      filePath: policies/custom-jailbreak-authority-bypass-guardrail
+    - name: custom-request-regex-guardrail
+      version: v1.0.0
+      filePath: policies/custom-request-regex-guardrail
+    - name: custom-request-phi-dlp-guardrail
+      version: v1.0.0
+      filePath: policies/custom-request-phi-dlp-guardrail
+    - name: custom-tenant-workforce-context-guard
+      version: v1.0.0
+      filePath: policies/custom-tenant-workforce-context-guard
+    - name: custom-patient-encounter-binding-guard
+      version: v1.0.0
+      filePath: policies/custom-patient-encounter-binding-guard
+    - name: custom-purpose-scope-guard
+      version: v1.0.0
+      filePath: policies/custom-purpose-scope-guard
+    - name: custom-clinical-note-injection-guard
+      version: v1.0.0
+      filePath: policies/custom-clinical-note-injection-guard
+    - name: custom-sensitive-clinical-context-guard
+      version: v1.0.0
+      filePath: policies/custom-sensitive-clinical-context-guard
+    - name: custom-trusted-clinical-source-guard
+      version: v1.0.0
+      filePath: policies/custom-trusted-clinical-source-guard
+    - name: custom-tool-delegation-guard
+      version: v1.0.0
+      filePath: policies/custom-tool-delegation-guard
+    - name: custom-clinical-action-authority-guard
+      version: v1.0.0
+      filePath: policies/custom-clinical-action-authority-guard
+    - name: custom-clinician-approval-guard
+      version: v1.0.0
+      filePath: policies/custom-clinician-approval-guard
+    - name: custom-prompt-decorator
+      version: v1.0.0
+      filePath: policies/custom-prompt-decorator
+    - name: custom-request-block-finalizer
+      version: v1.0.0
+      filePath: policies/custom-request-block-finalizer
+    - name: custom-response-phi-leakage-guard
+      version: v1.0.0
+      filePath: policies/custom-response-phi-leakage-guard
+    - name: custom-unsafe-output-guard
+      version: v1.0.0
+      filePath: policies/custom-unsafe-output-guard
+    - name: custom-response-url-guard
+      version: v1.0.0
+      filePath: policies/custom-response-url-guard
+    - name: custom-clinical-reliance-guard
+      version: v1.0.0
+      filePath: policies/custom-clinical-reliance-guard
+    - name: custom-structured-clinical-output-guard
+      version: v1.0.0
+      filePath: policies/custom-structured-clinical-output-guard

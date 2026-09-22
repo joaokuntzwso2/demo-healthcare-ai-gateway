@@ -1,0 +1,14 @@
+{
+  "name": "helios-clinical-ai-security-console",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Helios Clinical AI Security governance console and Node BFF",
+  "scripts": {
+    "dev": "node server/index.mjs",
+    "start": "node server/index.mjs",
+    "build": "node build.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": {"node": ">=20"}
+}

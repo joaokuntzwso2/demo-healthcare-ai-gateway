@@ -1,0 +1,66 @@
+version: v1
+gateway:
+  version: 1.1.0
+policies:
+  - name: api-key-auth
+    gomodule: github.com/wso2/gateway-controllers/policies/api-key-auth@v1
+
+  - name: host-rewrite
+    gomodule: github.com/wso2/gateway-controllers/policies/host-rewrite@v1
+
+  - name: request-rewrite
+    gomodule: github.com/wso2/gateway-controllers/policies/request-rewrite@v1
+
+  - name: respond
+    gomodule: github.com/wso2/gateway-controllers/policies/respond@v1
+
+  - name: set-headers
+    gomodule: github.com/wso2/gateway-controllers/policies/set-headers@v1
+
+  - name: subscription-validation
+    gomodule: github.com/wso2/gateway-controllers/policies/subscription-validation@v1
+
+  - name: custom-model-allowlist-guardrail
+    filePath: ../modular-ai-guardrails/policies/custom-model-allowlist-guardrail
+  - name: custom-resource-budget-guardrail
+    filePath: ../modular-ai-guardrails/policies/custom-resource-budget-guardrail
+  - name: canonicalize-and-classify
+    filePath: ../modular-ai-guardrails/policies/canonicalize-and-classify
+  - name: custom-jailbreak-authority-bypass-guardrail
+    filePath: ../modular-ai-guardrails/policies/custom-jailbreak-authority-bypass-guardrail
+  - name: custom-request-regex-guardrail
+    filePath: ../modular-ai-guardrails/policies/custom-request-regex-guardrail
+  - name: custom-request-phi-dlp-guardrail
+    filePath: ../modular-ai-guardrails/policies/custom-request-phi-dlp-guardrail
+  - name: custom-tenant-workforce-context-guard
+    filePath: ../modular-ai-guardrails/policies/custom-tenant-workforce-context-guard
+  - name: custom-patient-encounter-binding-guard
+    filePath: ../modular-ai-guardrails/policies/custom-patient-encounter-binding-guard
+  - name: custom-purpose-scope-guard
+    filePath: ../modular-ai-guardrails/policies/custom-purpose-scope-guard
+  - name: custom-clinical-note-injection-guard
+    filePath: ../modular-ai-guardrails/policies/custom-clinical-note-injection-guard
+  - name: custom-sensitive-clinical-context-guard
+    filePath: ../modular-ai-guardrails/policies/custom-sensitive-clinical-context-guard
+  - name: custom-trusted-clinical-source-guard
+    filePath: ../modular-ai-guardrails/policies/custom-trusted-clinical-source-guard
+  - name: custom-tool-delegation-guard
+    filePath: ../modular-ai-guardrails/policies/custom-tool-delegation-guard
+  - name: custom-clinical-action-authority-guard
+    filePath: ../modular-ai-guardrails/policies/custom-clinical-action-authority-guard
+  - name: custom-clinician-approval-guard
+    filePath: ../modular-ai-guardrails/policies/custom-clinician-approval-guard
+  - name: custom-prompt-decorator
+    filePath: ../modular-ai-guardrails/policies/custom-prompt-decorator
+  - name: custom-request-block-finalizer
+    filePath: ../modular-ai-guardrails/policies/custom-request-block-finalizer
+  - name: custom-response-phi-leakage-guard
+    filePath: ../modular-ai-guardrails/policies/custom-response-phi-leakage-guard
+  - name: custom-unsafe-output-guard
+    filePath: ../modular-ai-guardrails/policies/custom-unsafe-output-guard
+  - name: custom-response-url-guard
+    filePath: ../modular-ai-guardrails/policies/custom-response-url-guard
+  - name: custom-clinical-reliance-guard
+    filePath: ../modular-ai-guardrails/policies/custom-clinical-reliance-guard
+  - name: custom-structured-clinical-output-guard
+    filePath: ../modular-ai-guardrails/policies/custom-structured-clinical-output-guard

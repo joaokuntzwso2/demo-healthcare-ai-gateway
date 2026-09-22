@@ -1,0 +1,16 @@
+name: custom-prompt-decorator
+displayName: Clinical Prompt Decorator
+version: v1.0.0
+description: >
+  Adds non-authoritative clinical safety and grounding instructions after request security checks.
+parameters:
+  type: object
+  additionalProperties: true
+  properties:
+    enabled:
+      type: boolean
+      default: true
+systemParameters:
+  type: object
+  additionalProperties: false
+  properties: {}

@@ -1,0 +1,19 @@
+apiVersion: gateway.api-platform.wso2.com/v1alpha1
+kind: LlmProxy
+metadata:
+  name: clinical-ai-secure
+spec:
+  displayName: Clinical AI Secure
+  version: v1.0
+  context: /clinical-ai-secure
+  provider:
+    id: enterprise-openai
+  policies:
+    - name: api-key-auth
+      version: v1
+      paths:
+        - path: /*
+          methods: ["*"]
+          params:
+            in: header
+            key: X-API-Key

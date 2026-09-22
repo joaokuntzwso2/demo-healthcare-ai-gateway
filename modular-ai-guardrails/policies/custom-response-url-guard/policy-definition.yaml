@@ -1,0 +1,16 @@
+name: custom-response-url-guard
+displayName: Response URL Guard
+version: v1.0.0
+description: >
+  Response-phase clinical AI safety control. Blocks unsafe or ungrounded model output before it reaches the application.
+parameters:
+  type: object
+  additionalProperties: true
+  properties:
+    enabled:
+      type: boolean
+      default: true
+systemParameters:
+  type: object
+  additionalProperties: false
+  properties: {}

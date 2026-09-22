@@ -1,0 +1,324 @@
+[
+  {
+    "name": "api-key-auth",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/*",
+        "methods": [
+          "*"
+        ],
+        "params": {
+          "in": "header",
+          "key": "X-API-Key"
+        }
+      }
+    ]
+  },
+  {
+    "name": "custom-model-allowlist-guardrail",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {}
+      }
+    ]
+  },
+  {
+    "name": "custom-resource-budget-guardrail",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {}
+      }
+    ]
+  },
+  {
+    "name": "canonicalize-and-classify",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {}
+      }
+    ]
+  },
+  {
+    "name": "custom-jailbreak-authority-bypass-guardrail",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {}
+      }
+    ]
+  },
+  {
+    "name": "custom-request-regex-guardrail",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {}
+      }
+    ]
+  },
+  {
+    "name": "custom-request-phi-dlp-guardrail",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {}
+      }
+    ]
+  },
+  {
+    "name": "custom-tenant-workforce-context-guard",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {
+          "expectedApp": "patient-support"
+        }
+      }
+    ]
+  },
+  {
+    "name": "custom-patient-encounter-binding-guard",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {}
+      }
+    ]
+  },
+  {
+    "name": "custom-purpose-scope-guard",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {}
+      }
+    ]
+  },
+  {
+    "name": "custom-clinical-note-injection-guard",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {}
+      }
+    ]
+  },
+  {
+    "name": "custom-sensitive-clinical-context-guard",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {}
+      }
+    ]
+  },
+  {
+    "name": "custom-trusted-clinical-source-guard",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {}
+      }
+    ]
+  },
+  {
+    "name": "custom-tool-delegation-guard",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {}
+      }
+    ]
+  },
+  {
+    "name": "custom-clinical-action-authority-guard",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {}
+      }
+    ]
+  },
+  {
+    "name": "custom-clinician-approval-guard",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {}
+      }
+    ]
+  },
+  {
+    "name": "custom-prompt-decorator",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {}
+      }
+    ]
+  },
+  {
+    "name": "custom-request-block-finalizer",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {}
+      }
+    ]
+  },
+  {
+    "name": "custom-response-phi-leakage-guard",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {}
+      }
+    ]
+  },
+  {
+    "name": "custom-unsafe-output-guard",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {}
+      }
+    ]
+  },
+  {
+    "name": "custom-response-url-guard",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {}
+      }
+    ]
+  },
+  {
+    "name": "custom-clinical-reliance-guard",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {}
+      }
+    ]
+  },
+  {
+    "name": "custom-structured-clinical-output-guard",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {}
+      }
+    ]
+  },
+  {
+    "name": "request-rewrite",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/v1/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {
+          "pathRewrite": {
+            "type": "ReplaceFullPath",
+            "replaceFullPath": "/chat/completions"
+          }
+        }
+      }
+    ]
+  }
+]

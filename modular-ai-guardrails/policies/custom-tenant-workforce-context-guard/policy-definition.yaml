@@ -1,0 +1,19 @@
+name: custom-tenant-workforce-context-guard
+displayName: Tenant and Workforce Context Guard
+version: v1.0.0
+description: >
+  Request-phase clinical AI security control. Findings are recorded in shared request metadata and finalized consistently by custom-request-block-finalizer.
+parameters:
+  type: object
+  additionalProperties: true
+  properties:
+    enabled:
+      type: boolean
+      default: true
+    expectedApp:
+      type: string
+      enum: [clinician, patient-support]
+systemParameters:
+  type: object
+  additionalProperties: false
+  properties: {}

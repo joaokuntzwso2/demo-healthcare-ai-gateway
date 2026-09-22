@@ -1,0 +1,120 @@
+openapi: 3.0.3
+info:
+  title: Helios Clinical AI Security BFF API
+  version: 1.0.0
+  description: >-
+    Synthetic demonstration API for Helios. This contract documents the local BFF/governance
+    endpoints; it is not a clinical interoperability certification or medical API.
+servers:
+  - url: http://localhost:5173
+paths:
+  /api/health:
+    get:
+      summary: BFF health and configured model/Gateway mode
+      responses:
+        '200': {description: Healthy}
+  /api/gateway-status:
+    get:
+      summary: Live WSO2 controller/runtime/proxy status
+      responses:
+        '200': {description: Gateway state}
+  /api/overview:
+    get:
+      summary: Governance overview
+      responses:
+        '200': {description: Overview}
+  /api/scenarios:
+    get:
+      summary: List scenario catalog
+      responses:
+        '200': {description: Scenario catalog}
+  /api/scenarios/{id}/run:
+    post:
+      summary: Execute a synthetic scenario
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        '200': {description: Scenario evidence}
+  /api/copilot:
+    post:
+      summary: Clinician copilot request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query: {type: string}
+                actorId: {type: string, example: clin-001}
+                patientId: {type: string, example: pat-1001}
+                encounterId: {type: string, example: enc-501}
+                purpose: {type: string, example: lab-review}
+      responses:
+        '200': {description: Governed model/tool response}
+  /api/patient-support:
+    post:
+      summary: Lower-privilege patient-support request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query: {type: string}
+                userId: {type: string, example: portal-1001}
+                purpose: {type: string, example: patient-support}
+      responses:
+        '200': {description: Governed patient-support response}
+  /api/knowledge:
+    get:
+      summary: List protected knowledge metadata
+      parameters:
+        - in: query
+          name: tenant
+          schema: {type: string}
+      responses:
+        '200': {description: Knowledge source metadata}
+  /api/knowledge/ingest:
+    post:
+      summary: Ingest a trusted/untrusted synthetic text document into protected knowledge flow
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema: {type: string}
+      responses:
+        '200': {description: Accepted/evidence-only result}
+        '202': {description: Quarantined/held result}
+  /api/traces:
+    get:
+      summary: List redacted evidence traces
+      responses:
+        '200': {description: Trace list}
+  /api/traces/{traceId}:
+    get:
+      summary: Read one redacted evidence trace
+      parameters:
+        - in: path
+          name: traceId
+          required: true
+          schema: {type: string}
+      responses:
+        '200': {description: Trace}
+        '404': {description: Trace not found}
+  /api/architecture:
+    get:
+      summary: Runtime trust-boundary description
+      responses:
+        '200': {description: Architecture model}
+  /api/reference-data:
+    get:
+      summary: Synthetic reference-data metadata for the demo console
+      responses:
+        '200': {description: Synthetic reference metadata}

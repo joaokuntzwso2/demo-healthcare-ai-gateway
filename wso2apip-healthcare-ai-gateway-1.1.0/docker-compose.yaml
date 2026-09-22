@@ -1,0 +1,50 @@
+services:
+  gateway-controller:
+    image: ${GATEWAY_CONTROLLER_IMAGE:-ghcr.io/wso2/api-platform/wso2apip-healthcare-ai-gateway-1.1.0-gateway-controller:1.1.0}
+    restart: unless-stopped
+    command: ["-config", "/etc/gateway-controller/config.toml"]
+    ports:
+      - "9090:9090"
+      - "9094:9092"
+      - "9011:9091"
+    environment:
+      - APIP_GW_DEVELOPMENT_MODE=true
+      - APIP_GW_GATEWAY_REGISTRATION_TOKEN=${GATEWAY_REGISTRATION_TOKEN:-}
+      - APIP_GW_CONTROLPLANE_HOST=${GATEWAY_CONTROLPLANE_HOST:-}
+    volumes:
+      - helios-controller-data:/app/data
+      - ./configs/config.toml:/etc/gateway-controller/config.toml:ro
+      - ./resources/certificates:/app/certificates
+      - ./resources/listener-certs:/app/listener-certs:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks: [helios-gateway-network]
+
+  gateway-runtime:
+    image: ${GATEWAY_RUNTIME_IMAGE:-ghcr.io/wso2/api-platform/wso2apip-healthcare-ai-gateway-1.1.0-gateway-runtime:1.1.0}
+    restart: unless-stopped
+    command: ["--pol.config", "/etc/policy-engine/config.toml"]
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+      - "8081:8081"
+      - "9901:9901"
+      - "9002:9002"
+      - "9003:9003"
+    environment:
+      - GATEWAY_CONTROLLER_HOST=gateway-controller
+      - HELIOS_CONTEXT_SIGNING_KEY=${HELIOS_CONTEXT_SIGNING_KEY:?HELIOS_CONTEXT_SIGNING_KEY is required}
+    volumes:
+      - ./configs/config.toml:/etc/policy-engine/config.toml:ro
+      - ./configs/llm-pricing/model_prices.json:/etc/policy-engine/llm-pricing/model_prices.json:ro
+      - ./resources/certificates:/app/certificates:ro
+      - ./resources/listener-certs:/app/listener-certs:ro
+    networks: [helios-gateway-network]
+    depends_on: [gateway-controller]
+
+networks:
+  helios-gateway-network:
+    driver: bridge
+volumes:
+  helios-controller-data:
+    name: helios-healthcare-ai-gateway-controller-data

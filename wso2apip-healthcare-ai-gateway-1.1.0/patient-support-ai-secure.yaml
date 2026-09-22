@@ -1,0 +1,19 @@
+apiVersion: gateway.api-platform.wso2.com/v1alpha1
+kind: LlmProxy
+metadata:
+  name: patient-support-ai-secure
+spec:
+  displayName: Patient Support AI Secure
+  version: v1.0
+  context: /patient-support-ai-secure
+  provider:
+    id: enterprise-openai
+  policies:
+    - name: api-key-auth
+      version: v1
+      paths:
+        - path: /*
+          methods: ["*"]
+          params:
+            in: header
+            key: X-API-Key
