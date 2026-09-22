@@ -2,9 +2,11 @@ import https from 'node:https';
 import crypto from 'node:crypto';
 
 const MODE=()=>process.env.LLM_MODE||'deterministic';
-const BASE=()=>process.env.WSO2_AI_GATEWAY_URL||'https://localhost:8443';
+const BASE=()=>process.env.WSO2_AI_GATEWAY_URL||'https://localhost:18443';
 const CLINICAL_KEY=()=>process.env.WSO2_CLINICAL_PROXY_API_KEY||process.env.WSO2_AI_GATEWAY_API_KEY||'';
 const PATIENT_KEY=()=>process.env.WSO2_PATIENT_PROXY_API_KEY||process.env.WSO2_AI_GATEWAY_API_KEY||'';
+const CLINICAL_CONTEXT=()=>process.env.WSO2_CLINICAL_PROXY_CONTEXT||'/default/clinical-ai-secure';
+const PATIENT_CONTEXT=()=>process.env.WSO2_PATIENT_PROXY_CONTEXT||'/default/patient-support-ai-secure';
 const API_KEY_HEADER=()=>process.env.WSO2_API_KEY_HEADER||'X-API-Key';
 const DEFAULT_MODEL=()=>process.env.WSO2_DEFAULT_MODEL||process.env.OPENAI_MODEL||'gpt-4o-mini';
 
@@ -15,6 +17,8 @@ export function gatewayConfig(){
     provider:'enterprise-openai',
     clinicianProxy:'clinical-ai-secure',
     patientProxy:'patient-support-ai-secure',
+    clinicianContext:CLINICAL_CONTEXT(),
+    patientContext:PATIENT_CONTEXT(),
     apiKeyHeader:API_KEY_HEADER(),
     model:DEFAULT_MODEL(),
     separateApplicationKeys:Boolean(process.env.WSO2_CLINICAL_PROXY_API_KEY&&process.env.WSO2_PATIENT_PROXY_API_KEY),
@@ -62,7 +66,8 @@ function signedHeliosContextHeaders(context){
     breakGlass:context.breakGlass||null
   };
   const encoded=Buffer.from(JSON.stringify(heliosContext),'utf8').toString('base64url');
-  const signingKey=process.env.HELIOS_CONTEXT_SIGNING_KEY||'helios-demo-context-signing-key';
+  const signingKey=process.env.HELIOS_CONTEXT_SIGNING_KEY;
+  if(!signingKey) throw new Error('HELIOS_CONTEXT_SIGNING_KEY is required in gateway mode.');
   const signature=crypto.createHmac('sha256',signingKey).update(encoded).digest('hex');
   return {'X-Helios-Clinical-Context':encoded,'X-Helios-Clinical-Signature':signature};
 }
@@ -75,16 +80,12 @@ export async function invokeModel({context,messages,model=DEFAULT_MODEL(),maxTok
 
   const clinician=context.app==='clinician';
   const proxy=clinician?'clinical-ai-secure':'patient-support-ai-secure';
+  const proxyContext=clinician?CLINICAL_CONTEXT():PATIENT_CONTEXT();
   const apiKey=clinician?CLINICAL_KEY():PATIENT_KEY();
   if(!apiKey) throw new Error(`Missing API key for ${proxy}. Set WSO2_${clinician?'CLINICAL':'PATIENT'}_PROXY_API_KEY.`);
 
-  const url=`${BASE().replace(/\/$/,'')}/${proxy}/v1/chat/completions`;
-  const body={
-    model,
-    messages,
-    max_tokens:maxTokens,
-    temperature
-  };
+  const url=`${BASE().replace(/\/$/,'')}${proxyContext}/chat/completions`;
+  const body={model,messages,max_tokens:maxTokens,temperature};
   if(Array.isArray(tools)&&tools.length){body.tools=tools;body.tool_choice=toolChoice||'auto';}
 
   const resp=await requestJson(url,body,{[API_KEY_HEADER()]:apiKey,...signedHeliosContextHeaders(context)});

@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { patients, workforce, patientSupportUsers, encountersById } from '../data/synthetic-healthcare.mjs';
+import { patients, workforce, patientSupportUsers, encountersById, careAssignments, isClinicianAssignedToPatient } from '../data/synthetic-healthcare.mjs';
 
 const HMAC_KEY = process.env.HELIOS_PSEUDONYM_KEY || 'helios-demo-only-pseudonym-key';
 export function pseudonymize(value){ return 'PX-' + crypto.createHmac('sha256', HMAC_KEY).update(String(value)).digest('hex').slice(0,12).toUpperCase(); }
@@ -10,10 +10,13 @@ export function resolveClinicianContext({ actorId='clin-001', patientId='pat-100
   const patient = patients[patientId];
   if (!actor || !patient) throw new AccessError('CLINICAL_DATA_NOT_AUTHORIZED','Unknown workforce actor or patient.');
   if (actor.tenant !== patient.tenant) throw new AccessError('PATIENT_SCOPE_MISMATCH','Cross-tenant patient access denied.');
+  if (!isClinicianAssignedToPatient(actor.id, patient.id)) {
+    throw new AccessError('PATIENT_SCOPE_MISMATCH', `${actor.display} is not assigned to this patient care context.`);
+  }
   const encounter = encounterId ? encountersById[encounterId] : null;
   if (encounterId && (!encounter || encounter.patient !== patient.id || encounter.tenant !== actor.tenant)) throw new AccessError('PATIENT_SCOPE_MISMATCH','Encounter is not bound to the authorized patient and tenant.');
   const scopes = requestedScopes.length ? requestedScopes.filter(s => actor.scopes.includes(s)) : [...actor.scopes];
-  return { tenant:actor.tenant, actor:{id:actor.id,display:actor.display,role:actor.role}, patient:{id:patient.id,pseudonym:patient.pseudonym}, encounter:encounter?.id || null, purpose, scopes, app:'clinician', permittedDataCategories:[] };
+  return { tenant:actor.tenant, actor:{id:actor.id,display:actor.display,role:actor.role}, patient:{id:patient.id,pseudonym:patient.pseudonym}, encounter:encounter?.id || null, purpose, scopes, app:'clinician', patientAssignment:{assigned:true,source:'synthetic-care-team',assignedPatientIds:[...(careAssignments[actor.id]||[])]}, permittedDataCategories:[] };
 }
 
 export function resolvePatientSupportContext({ userId='portal-1001', patientId, purpose='patient-support' }={}){
@@ -23,7 +26,7 @@ export function resolvePatientSupportContext({ userId='portal-1001', patientId, 
   if (effectivePatient !== user.patient) throw new AccessError('PATIENT_SCOPE_MISMATCH','Patient-support identity may only access its own patient context.');
   const patient = patients[user.patient];
   if (!patient || patient.tenant !== user.tenant) throw new AccessError('PATIENT_SCOPE_MISMATCH','Patient tenant binding failed.');
-  return {tenant:user.tenant,actor:{id:user.id,display:'Synthetic Patient Portal User',role:'patient'},patient:{id:patient.id,pseudonym:patient.pseudonym},encounter:null,purpose,scopes:[...user.scopes],app:'patient-support',permittedDataCategories:['appointments','approvedInstructions','education']};
+  return {tenant:user.tenant,actor:{id:user.id,display:user.display||'Synthetic Patient Portal User',role:'patient'},patient:{id:patient.id,pseudonym:patient.pseudonym},encounter:null,purpose,scopes:[...user.scopes],app:'patient-support',permittedDataCategories:['appointments','approvedInstructions','education']};
 }
 
 export function validateRequestedPatient(context, candidatePatientId){

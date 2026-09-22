@@ -20,7 +20,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],
@@ -33,7 +33,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],
@@ -46,7 +46,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],
@@ -59,7 +59,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],
@@ -72,7 +72,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],
@@ -85,7 +85,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],
@@ -98,7 +98,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],
@@ -113,7 +113,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],
@@ -126,7 +126,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],
@@ -139,7 +139,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],
@@ -152,7 +152,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],
@@ -165,7 +165,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],
@@ -178,7 +178,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],
@@ -191,7 +191,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],
@@ -204,7 +204,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],
@@ -217,7 +217,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],
@@ -230,7 +230,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],
@@ -243,7 +243,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],
@@ -256,7 +256,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],
@@ -269,7 +269,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],
@@ -282,7 +282,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],
@@ -295,7 +295,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],
@@ -308,7 +308,7 @@
     "version": "v1",
     "paths": [
       {
-        "path": "/v1/chat/completions",
+        "path": "/chat/completions",
         "methods": [
           "POST"
         ],

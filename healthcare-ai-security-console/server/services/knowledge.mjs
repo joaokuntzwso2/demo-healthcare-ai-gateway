@@ -17,6 +17,10 @@ function metadataFor(name){
  const now=new Date();
  const common={specialty:'general',tenant:'helios-north',effectiveDate:'2026-01-01',reviewDate:'2027-01-01',version:'1.0'};
  if(name.includes('medication-review')) return {...common,publisher:'Helios Clinical Governance',trustLevel:'trusted',specialty:'clinical-pharmacy',version:'3.2',tenant:'helios-north'};
+ if(name.includes('renal-review')) return {...common,publisher:'Helios Clinical Governance',trustLevel:'trusted',specialty:'nephrology-workflow',version:'1.2',tenant:'helios-north'};
+ if(name.includes('anticoagulation-review')) return {...common,publisher:'Helios Clinical Governance',trustLevel:'trusted',specialty:'anticoagulation-workflow',version:'1.1',tenant:'helios-north'};
+ if(name.includes('diabetes-followup')) return {...common,publisher:'Helios Clinical Governance',trustLevel:'trusted',specialty:'chronic-care-workflow',version:'1.1',tenant:'helios-north'};
+ if(name.includes('discharge-reconciliation')) return {...common,publisher:'Helios Clinical Governance',trustLevel:'trusted',specialty:'transitions-of-care',version:'1.3',tenant:'helios-north'};
  if(name.includes('patient-education')) return {...common,publisher:'Helios Patient Education',trustLevel:'trusted',specialty:'patient-education',version:'2.1',tenant:'helios-north'};
  if(name.includes('stale')) return {...common,publisher:'Helios Clinical Governance',trustLevel:'trusted',reviewDate:'2025-01-01',version:'0.9',tenant:'helios-north'};
  if(name.includes('aurora')) return {...common,publisher:'Aurora Clinical Governance',trustLevel:'trusted',specialty:'general',version:'1.4',tenant:'aurora-br'};

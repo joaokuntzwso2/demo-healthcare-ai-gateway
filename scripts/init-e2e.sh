@@ -1,77 +1,42 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-GW="$ROOT/wso2apip-healthcare-ai-gateway-1.1.0"
-ENVFILE="$ROOT/.helios.env"
-KEYENV="$GW/configs/keys.env"
+GW="$ROOT/wso2apip-ai-gateway-1.2.0"
 
-for cmd in node python3 openssl docker ap curl; do
+for cmd in node python3 docker curl jq ap; do
   command -v "$cmd" >/dev/null 2>&1 || { echo "ERROR: missing required command: $cmd" >&2; exit 1; }
 done
-docker info >/dev/null 2>&1 || { echo "ERROR: Docker is installed but the daemon is not running." >&2; exit 1; }
 
-mkdir -p "$GW/configs" "$GW/resources/listener-certs" "$GW/resources/certificates" "$ROOT/evidence"
-[[ -f "$GW/configs/config.toml" ]] || cp "$GW/configs/config-template.toml" "$GW/configs/config.toml"
+docker info >/dev/null 2>&1 || { echo 'ERROR: Docker is installed but the daemon is not running.' >&2; exit 1; }
+[[ -d "$GW" ]] || { echo "ERROR: WSO2 AI Gateway 1.2.0 directory not found: $GW" >&2; exit 1; }
+[[ -f "$GW/docker-compose.yaml" ]] || { echo "ERROR: missing $GW/docker-compose.yaml" >&2; exit 1; }
+[[ -f "$GW/api-platform.env" ]] || {
+  echo "ERROR: $GW/api-platform.env is missing. Run the one-time WSO2 1.2 setup first." >&2
+  exit 1
+}
+[[ -f "$ROOT/.openai.env" ]] || { echo 'ERROR: .openai.env missing. Run ./run.sh.' >&2; exit 1; }
 
-# Create or preserve local demo secrets. All generated values are shell-safe hex.
-python3 - "$ENVFILE" <<'PY'
-from pathlib import Path
-import secrets, sys
-p=Path(sys.argv[1])
-existing={}
-if p.exists():
-    for line in p.read_text().splitlines():
-        s=line.strip()
-        if not s or s.startswith('#') or '=' not in s: continue
-        k,v=s.split('=',1)
-        v=v.strip()
-        if len(v)>=2 and v[0]==v[-1] and v[0] in "\"'": v=v[1:-1]
-        existing[k.strip()]=v
-for k in ['HELIOS_CONTEXT_SIGNING_KEY','HELIOS_PSEUDONYM_KEY','HELIOS_APPROVAL_KEY','HELIOS_KNOWLEDGE_SIGNING_KEY']:
-    if not existing.get(k) or 'replace' in existing[k] or 'change-me' in existing[k]:
-        existing[k]=secrets.token_hex(32)
-# These are overwritten after proxy-key generation, but keep prior working values if present.
-existing.setdefault('LLM_MODE','gateway')
-existing.setdefault('WSO2_AI_GATEWAY_URL','https://localhost:8443')
-existing.setdefault('WSO2_TLS_INSECURE','true')
-existing.setdefault('WSO2_API_KEY_HEADER','X-API-Key')
-existing.setdefault('WSO2_DEFAULT_MODEL','gpt-4o-mini')
-lines=['# Helios local runtime configuration. Generated/updated by scripts/init-e2e.sh and bootstrap-gateway.mjs.']
-for k,v in existing.items():
-    # single-quote shell-safe values
-    q=str(v).replace("'", "'\\''")
-    lines.append(f"{k}='{q}'")
-p.write_text('\n'.join(lines)+'\n')
-p.chmod(0o600)
-PY
-
-# shellcheck disable=SC1090
-source "$ENVFILE"
-
-CERT="$GW/resources/listener-certs/default-listener.crt"
-PKEY="$GW/resources/listener-certs/default-listener.key"
-pair_ok=false
-if [[ -s "$CERT" && -s "$PKEY" ]]; then
-  cert_hash="$(openssl x509 -in "$CERT" -pubkey -noout 2>/dev/null | openssl pkey -pubin -outform DER 2>/dev/null | shasum -a 256 | awk '{print $1}' || true)"
-  key_hash="$(openssl pkey -in "$PKEY" -pubout -outform DER 2>/dev/null | shasum -a 256 | awk '{print $1}' || true)"
-  [[ -n "$cert_hash" && "$cert_hash" == "$key_hash" ]] && pair_ok=true
-fi
-if [[ "$pair_ok" != true ]]; then
-  echo "==> Generating local self-signed TLS certificate for localhost"
-  openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 365 \
-    -subj '/CN=localhost' \
-    -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1' \
-    -keyout "$PKEY" -out "$CERT" >/dev/null 2>&1
-  chmod 600 "$PKEY"
+# Stop the console from the previous run so no process keeps stale environment values.
+if [[ -f "$ROOT/.helios-console.pid" ]]; then
+  pid="$(cat "$ROOT/.helios-console.pid" 2>/dev/null || true)"
+  [[ -n "$pid" ]] && kill "$pid" 2>/dev/null || true
+  rm -f "$ROOT/.helios-console.pid"
 fi
 
-cat > "$KEYENV" <<ENV
-HELIOS_CONTEXT_SIGNING_KEY=$HELIOS_CONTEXT_SIGNING_KEY
-GATEWAY_CONTROLPLANE_HOST=${GATEWAY_CONTROLPLANE_HOST:-}
-GATEWAY_REGISTRATION_TOKEN=${GATEWAY_REGISTRATION_TOKEN:-}
-ENV
-chmod 600 "$KEYENV"
+# Runtime/application state is deliberately regenerated on every start.
+rm -f \
+  "$ROOT/.helios.env" \
+  "$ROOT/healthcare-ai-security-console/.env" \
+  "$ROOT/healthcare-ai-security-console/.env.local" \
+  "$ROOT/helios-console.log"
 
-echo "Helios E2E local configuration initialized."
-echo "Runtime environment: $ENVFILE"
-echo "Gateway environment: $KEYENV"
+# Remove obsolete 1.1 runtime env state so it cannot accidentally be reused.
+rm -f \
+  "$ROOT/wso2apip-healthcare-ai-gateway-1.1.0/configs/keys.env" \
+  "$ROOT/wso2apip-healthcare-ai-gateway-1.1.0/configs/workspace-secrets.env" 2>/dev/null || true
+
+mkdir -p "$ROOT/evidence"
+
+echo 'Helios preflight complete.'
+echo 'Preserved: .openai.env and WSO2 1.2 Gateway registration/configuration.'
+echo 'Removed: previous Helios runtime env, app keys, console process state, and legacy 1.1 env files.'

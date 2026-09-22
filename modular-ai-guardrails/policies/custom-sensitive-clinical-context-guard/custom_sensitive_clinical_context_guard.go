@@ -87,6 +87,33 @@ func messagesText(v map[string]interface{}) string {
 	}
 	return b.String()
 }
+
+func userMessagesText(v map[string]interface{}) string {
+	raw, ok := v["messages"].([]interface{})
+	if !ok {
+		return ""
+	}
+
+	var b strings.Builder
+	for _, m := range raw {
+		mm, ok := m.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		role, _ := mm["role"].(string)
+		if role != "user" {
+			continue
+		}
+
+		if text, ok := mm["content"].(string); ok {
+			b.WriteString(text)
+			b.WriteByte('\n')
+		}
+	}
+
+	return b.String()
+}
 func canonicalize(s string) string {
 	out := html.UnescapeString(strings.TrimSpace(s))
 	if d, err := url.QueryUnescape(out); err == nil {
@@ -224,7 +251,7 @@ func (p *Policy) OnRequestBody(_ context.Context, req *policy.RequestContext, _ 
 	if c == nil {
 		return nil
 	}
-	text := strings.ToLower(messagesText(v))
+	text := strings.ToLower(userMessagesText(v))
 	if str(c, "app") == "patient-support" && containsAny(text, `\braw\s+chart\b`, `\bget_patient_summary\b`, `\bget_recent_labs\b`, `\bget_medications\b`, `\bdiagnos(?:is|es)\b`) {
 		setFinding(req, "CLINICAL_DATA_NOT_AUTHORIZED", "Patient-support proxy cannot receive raw clinician chart context.", nil)
 	}

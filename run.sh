@@ -1,44 +1,93 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+OPENAI_ENV="$ROOT/.openai.env"
+
+quote_shell() {
+  local v="$1"
+  printf "'%s'" "${v//\'/\'\\\'\'}"
+}
+
+save_openai_config() {
+  : "${OPENAI_API_KEY:?OPENAI_API_KEY is required}"
+  local model="${OPENAI_MODEL:-gpt-4o-mini}"
+  umask 077
+  {
+    printf '# Persistent Helios OpenAI configuration. This is the only application secret preserved across ./run.sh resets.\n'
+    printf 'OPENAI_API_KEY='; quote_shell "$OPENAI_API_KEY"; printf '\n'
+    printf 'OPENAI_MODEL='; quote_shell "$model"; printf '\n'
+  } > "$OPENAI_ENV"
+  chmod 600 "$OPENAI_ENV"
+}
+
+load_or_capture_openai_config() {
+  if [[ -z "${OPENAI_API_KEY:-}" && -f "$OPENAI_ENV" ]]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "$OPENAI_ENV"
+    set +a
+  fi
+
+  if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+    if [[ -t 0 ]]; then
+      read -r -s -p 'OpenAI API key: ' OPENAI_API_KEY
+      echo
+      export OPENAI_API_KEY
+    else
+      echo 'ERROR: OPENAI_API_KEY is not configured and .openai.env does not exist.' >&2
+      exit 1
+    fi
+  fi
+
+  OPENAI_MODEL="${OPENAI_MODEL:-gpt-4o-mini}"
+  export OPENAI_MODEL
+  save_openai_config
+}
+
 cmd="${1:-start}"
 case "$cmd" in
-  start|e2e)
-    if [[ -z "${OPENAI_API_KEY:-}" ]]; then
-      if [[ -t 0 ]]; then
-        read -r -s -p 'OpenAI API key (used only to configure the local WSO2 provider): ' OPENAI_API_KEY
-        echo
-        export OPENAI_API_KEY
-      else
-        echo 'ERROR: OPENAI_API_KEY is required for real end-to-end mode.' >&2
-        exit 1
-      fi
-    fi
+  start|e2e|fresh)
+    load_or_capture_openai_config
     exec "$ROOT/scripts/run-e2e.sh"
+    ;;
+  configure-openai)
+    if [[ -t 0 ]]; then
+      read -r -s -p 'OpenAI API key: ' OPENAI_API_KEY
+      echo
+      export OPENAI_API_KEY
+      OPENAI_MODEL="${OPENAI_MODEL:-gpt-4o-mini}"
+      export OPENAI_MODEL
+      save_openai_config
+      echo "Saved OpenAI configuration to $OPENAI_ENV"
+    else
+      echo 'ERROR: configure-openai requires an interactive terminal.' >&2
+      exit 1
+    fi
     ;;
   deterministic)
     exec "$ROOT/scripts/first-run-local.sh"
     ;;
   check)
     [[ -f "$ROOT/.helios.env" ]] || { echo 'ERROR: run ./run.sh first.' >&2; exit 1; }
+    set -a
     # shellcheck disable=SC1090
     source "$ROOT/.helios.env"
-    export LLM_MODE WSO2_AI_GATEWAY_URL WSO2_PROVIDER_ACCESS_KEY WSO2_CLINICAL_PROXY_API_KEY WSO2_PATIENT_PROXY_API_KEY WSO2_TLS_INSECURE WSO2_API_KEY_HEADER WSO2_DEFAULT_MODEL HELIOS_CONTEXT_SIGNING_KEY HELIOS_PSEUDONYM_KEY HELIOS_APPROVAL_KEY HELIOS_KNOWLEDGE_SIGNING_KEY
+    set +a
     exec node "$ROOT/scripts/gateway-acceptance.mjs"
     ;;
   status)
     echo '--- BFF/UI ---'
     curl -fsS http://localhost:5173/api/health 2>/dev/null || echo 'not healthy'
     echo; echo '--- Gateway controller ---'
-    curl -fsS http://localhost:9094/health 2>/dev/null || echo 'not healthy'
+    curl -fsS http://localhost:9094/api/admin/v1/health 2>/dev/null || echo 'not healthy'
     echo; echo '--- Gateway runtime ---'
     curl -fsS http://localhost:9901/ready 2>/dev/null || echo 'not ready'
     echo; echo '--- Containers ---'
-    GW="$ROOT/wso2apip-healthcare-ai-gateway-1.1.0"; KEYENV="$GW/configs/keys.env"
-    if [[ -f "$KEYENV" ]]; then
-      (cd "$GW" && docker compose -p helios-ai-gateway --env-file "$KEYENV" ps) || true
-    else
-      (cd "$GW" && docker compose -p helios-ai-gateway ps) || true
+    GW="$ROOT/wso2apip-ai-gateway-1.2.0"
+    if [[ -d "$GW" ]]; then
+      args=(-f docker-compose.yaml)
+      [[ -f "$GW/docker-compose.helios.override.yaml" ]] && args+=(-f docker-compose.helios.override.yaml)
+      (cd "$GW" && docker compose "${args[@]}" ps) || true
     fi
     ;;
   stop)
@@ -49,16 +98,18 @@ case "$cmd" in
     ;;
   *)
     cat <<USAGE
-Usage: ./run.sh [start|e2e|deterministic|check|status|stop|test]
+Usage: ./run.sh [start|fresh|e2e|configure-openai|deterministic|check|status|stop|test]
 
-  start/e2e      Build/start custom WSO2 Gateway, deploy provider + two proxies,
-                 apply policy chains, generate keys, live-test the model/tool loop,
-                 and start the UI/BFF in gateway mode. Requires OPENAI_API_KEY.
-  deterministic Offline deterministic test/demo mode; no external LLM.
-  check          Re-run live Gateway + agent acceptance using saved proxy keys.
-  status         Show BFF, Gateway controller/runtime, and container state.
-  stop           Stop UI/BFF and Gateway containers (preserve controller volume).
-  test           Run local Go/Node/build tests without needing OpenAI.
+  start/fresh/e2e  Destructively reset Helios Gateway application state, preserving
+                   only .openai.env and Gateway registration, then recreate provider
+                   access, both proxies, all app keys, all Helios runtime secrets,
+                   env files, run live acceptance, and start the UI/BFF.
+  configure-openai Replace the persistent OpenAI configuration.
+  deterministic    Offline deterministic mode; no external LLM.
+  check            Re-run live Gateway acceptance with the current generated runtime env.
+  status           Show BFF and Gateway state.
+  stop             Stop UI/BFF and Gateway containers without deleting Gateway registration.
+  test             Run local tests.
 USAGE
     exit 2
     ;;

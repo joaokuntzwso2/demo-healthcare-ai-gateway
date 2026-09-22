@@ -20,6 +20,22 @@ test('cross-tenant access is denied',()=>{
   assert.throws(()=>resolveClinicianContext({actorId:'clin-001',patientId:'pat-br-2001',encounterId:null}),e=>e.code==='PATIENT_SCOPE_MISMATCH');
 });
 
+
+test('patient assignment boundary denies a same-tenant doctor outside the care team',()=>{
+  assert.throws(
+    ()=>resolveClinicianContext({actorId:'neph-001',patientId:'pat-1004',encounterId:'enc-504',purpose:'lab-review'}),
+    e=>e.code==='PATIENT_SCOPE_MISMATCH' && /not assigned/i.test(e.message)
+  );
+});
+
+test('assigned endocrinologist can access Nadia Rahman lab context',()=>{
+  const ctx=resolveClinicianContext({actorId:'endo-001',patientId:'pat-1004',encounterId:'enc-504',purpose:'lab-review'});
+  assert.equal(ctx.actor.id,'endo-001');
+  assert.equal(ctx.patient.id,'pat-1004');
+  assert.equal(ctx.patientAssignment.assigned,true);
+  assert.ok(ctx.scopes.includes('labs:read'));
+});
+
 test('cross-patient tool parameter is denied',()=>{
   const ctx=resolveClinicianContext();
   assert.throws(()=>executeTool(ctx,'get_recent_labs',{patientId:'pat-1002'}),e=>e.code==='PATIENT_SCOPE_MISMATCH');
@@ -77,11 +93,11 @@ test('trace redaction removes raw patient id and sensitive text',()=>{
 test('authorized potassium retrieval is grounded',()=>{
   const ctx=resolveClinicianContext({purpose:'lab-review'}); const labs=executeTool(ctx,'get_recent_labs').labs;
   const answer=groundedLabAnswer({question:"What was the patient's potassium?",labs});
-  assert.equal(answer.reasonCodes.length,0); assert.match(answer.text,/4\.2/);
+  assert.equal(answer.reasonCodes.length,0); assert.match(answer.text,/5\.8/); assert.match(answer.text,/4\.9/);
 });
 
 test('fabricated potassium value fails grounding',()=>{
-  const validation=validateClinicalResponse('The synthetic potassium was 9.9 demo-unit/L.',{authoritativeFacts:[{code:'SYNTH-K',value:4.2}]});
+  const validation=validateClinicalResponse('The synthetic potassium was 9.9 demo-unit/L.',{authoritativeFacts:[{code:'SYNTH-K',display:'Potassium',value:5.8}]});
   assert.equal(validation.valid,false); assert.ok(validation.reasonCodes.includes('TRUSTED_CLINICAL_SOURCE_REQUIRED'));
 });
 

@@ -1,161 +1,36 @@
-# ============================================================
-# Helios Clinical AI Security / Healthcare AI Gateway Demo
-# ============================================================
-
-# ------------------------------------------------------------
-# Secrets / environment files
-# ------------------------------------------------------------
-.env
-.env.*
-*.env
-*.env.*
-
-# Allow sanitized examples/templates
-!.env.example
-!**/.env.example
-!*.env.example
-!**/*.env.example
-
-# Package manager / machine credentials
-.npmrc
-.pypirc
-.netrc
-
-# Common credential files
-credentials.json
-**/credentials.json
-service-account*.json
-**/service-account*.json
-
-# ------------------------------------------------------------
-# WSO2 runtime/local configuration
-#
-# Keep config-template.toml in Git.
-# Never commit live config.toml files.
-# ------------------------------------------------------------
-**/configs/config.toml
-**/configs/config.toml.before-*
-
-# Local backup files produced during configuration changes
-*.before-*
-*.bak
-*.backup
-*.orig
-*.rej
-*~
-
-# Local Docker overrides may contain credentials
-docker-compose.override.yml
-docker-compose.override.yaml
-
-# ------------------------------------------------------------
-# Private keys / cryptographic secrets
-# ------------------------------------------------------------
-*.key
-*.pem
-*.p12
-*.pfx
-*.jks
-*.keystore
-
-# Symmetric encryption keys
-**/aesgcm-keys/**
-*.bin
-
-# ------------------------------------------------------------
-# WSO2 product archives / downloaded distributions
-# ------------------------------------------------------------
-*.zip
-*.tar
-*.tar.gz
-*.tgz
-
-# ------------------------------------------------------------
-# Node.js
-# ------------------------------------------------------------
-node_modules/
-.npm/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# Generated frontend output
-dist/
-build/
-coverage/
-.nyc_output/
-.cache/
-.vite/
-
-# ------------------------------------------------------------
-# Go
-# ------------------------------------------------------------
-*.test
-coverage.out
-.coverprofile
-
-# Do NOT ignore:
-# go.mod
-# go.sum
-# go.work
-# go.work.sum
-
-# ------------------------------------------------------------
-# Generated runtime evidence
-# ------------------------------------------------------------
-evidence/*
-!evidence/.gitkeep
-
-# Runtime quarantine
-demo-files/quarantine/*
-!demo-files/quarantine/.gitkeep
-
-# Generic logs
-*.log
-
-# ------------------------------------------------------------
-# Temporary/runtime files
-# ------------------------------------------------------------
-tmp/
-temp/
-.tmp/
-*.tmp
-*.pid
-*.sock
-
-# ------------------------------------------------------------
-# Secret scanner output
-# ------------------------------------------------------------
-gitleaks-report.*
-.gitleaks-report.*
-
-# ------------------------------------------------------------
-# macOS
-# ------------------------------------------------------------
 .DS_Store
-.AppleDouble
-.LSOverride
-._*
-
-# ------------------------------------------------------------
-# IDEs/editors
-# ------------------------------------------------------------
-.idea/
-*.iml
-
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.example.json
-
-# Vim
-*.swp
-*.swo
-
-# ------------------------------------------------------------
-# Misc local files
-# ------------------------------------------------------------
-*.local
-
-# Helios locally generated runtime credentials
+*.log
+*.pid
 .helios.env
+healthcare-ai-security-console/.env.local
+wso2apip-healthcare-ai-gateway-1.1.0/.env
+wso2apip-healthcare-ai-gateway-1.1.0/configs/keys.env
+wso2apip-healthcare-ai-gateway-1.1.0/build-manifest.yaml
+node_modules/
+dist/
+.openai.env
+healthcare-ai-security-console/.env
+wso2apip-ai-gateway-1.2.0/docker-compose.helios.override.yaml
+
+# Helios local/runtime secrets
+.helios.env
+.openai.env
+**/.env
+**/.env.local
+**/api-platform.env
+**/configs/keys.env
+**/configs/workspace-secrets.env
+**/configs/config.toml
+
+# Private/generated cryptographic material
+**/*.key
+**/*.pem
+**/*.p12
+**/*.pfx
+**/*.jks
+**/*.keystore
+**/resources/aesgcm-keys/
+
+# Generated Gateway distributions and local backups
+wso2apip-ai-gateway-1.2.0.zip
+*.before-*
