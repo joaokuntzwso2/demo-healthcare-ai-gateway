@@ -6,20 +6,23 @@ import { evaluateMedicationRequest } from './clinical-safety.mjs';
 import { requestMedicationOrder, requestTestOrder, submitClinicianApproval } from './actions.mjs';
 import { buildFhirEnvelope } from './fhir-adapter.mjs';
 import { encounterWithLifecycle } from './encounter-lifecycle.mjs';
+import { assertToolAllowedForPurpose, allowedClinicianToolsForPurpose, schedulingProjection } from './purpose-of-use.mjs';
 import { medicationEvidenceForPatient } from './clinical-evidence-conflict.mjs';
 import { applyCurrentLabProjection } from './lab-result-lineage.mjs';
 
-export const clinicianTools=['get_patient_summary','get_encounter','get_recent_labs','get_medications','get_allergies','get_conditions','search_clinical_knowledge','check_medication_safety','draft_clinical_note','request_medication_order','request_test_order','submit_for_clinician_approval'];
+export const clinicianTools=['get_patient_summary','get_encounter','get_recent_labs','get_medications','get_allergies','get_conditions','search_clinical_knowledge','check_medication_safety','draft_clinical_note','request_medication_order','request_test_order','submit_for_clinician_approval','get_scheduling_context'];
 export const patientTools=['get_own_appointment','get_own_approved_instructions','search_patient_education','request_callback'];
 const requireScope=(ctx,s)=>{if(!ctx.scopes.includes(s))throw new AccessError('CLINICAL_DATA_NOT_AUTHORIZED',`Scope ${s} required.`)};
-export function allowedTools(context){return context.app==='clinician'?[...clinicianTools]:[...patientTools];}
+export function allowedTools(context){return context.app==='clinician'?allowedClinicianToolsForPurpose(context,clinicianTools):[...patientTools];}
 function withFhir(context,name,patient,result){const fhir=buildFhirEnvelope({context,name,patient,result});return fhir?{...result,fhir}:result;}
 export function executeTool(context,name,args={}){
+ if(context.app==='clinician')assertToolAllowedForPurpose(context,name);
  if(!allowedTools(context).includes(name)) throw new AccessError('CLINICAL_DATA_NOT_AUTHORIZED',`Tool ${name} is not available to ${context.app}.`);
  validateRequestedPatient(context,args.patientId);
  const patient=patients[context.patient.id];
  let result;
  switch(name){
+  case 'get_scheduling_context': result={evidenceType:'AUTHORITATIVE SCHEDULING FACT',...schedulingProjection(patient)}; break;
   case 'get_patient_summary': {
     requireScope(context,'chart:summary');
     const view=minimizedPatientView({...context,purpose:'encounter-summary'},'encounter-summary');
