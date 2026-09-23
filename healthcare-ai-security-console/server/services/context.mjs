@@ -1,5 +1,8 @@
 import crypto from 'node:crypto';
 import { patients, workforce, patientSupportUsers, encountersById, careAssignments, isClinicianAssignedToPatient } from '../data/synthetic-healthcare.mjs';
+import { encounterAccessDecision } from './encounter-lifecycle.mjs';
+import { careRelationshipDecision } from './care-team-handoff.mjs';
+import { activeBreakGlassGrant, recordBreakGlassUse } from './break-glass.mjs';
 
 const HMAC_KEY = process.env.HELIOS_PSEUDONYM_KEY || 'helios-demo-only-pseudonym-key';
 export function pseudonymize(value){ return 'PX-' + crypto.createHmac('sha256', HMAC_KEY).update(String(value)).digest('hex').slice(0,12).toUpperCase(); }
@@ -10,13 +13,45 @@ export function resolveClinicianContext({ actorId='clin-001', patientId='pat-100
   const patient = patients[patientId];
   if (!actor || !patient) throw new AccessError('CLINICAL_DATA_NOT_AUTHORIZED','Unknown workforce actor or patient.');
   if (actor.tenant !== patient.tenant) throw new AccessError('PATIENT_SCOPE_MISMATCH','Cross-tenant patient access denied.');
-  if (!isClinicianAssignedToPatient(actor.id, patient.id)) {
-    throw new AccessError('PATIENT_SCOPE_MISMATCH', `${actor.display} is not assigned to this patient care context.`);
+  const relationship=careRelationshipDecision({actorId:actor.id,patientId:patient.id});
+  const emergencyGrant=relationship.allowed?null:activeBreakGlassGrant({actorId:actor.id,patientId:patient.id});
+  if (!relationship.allowed && !emergencyGrant) {
+    if(actor.role==='emergency-physician'){
+      throw new AccessError('BREAK_GLASS_REQUIRED',`${actor.display} is not assigned to this patient. Explicit emergency reason and verified step-up authentication are required.`);
+    }
+    throw new AccessError(relationship.code, relationship.message);
   }
+  if(emergencyGrant){
+    recordBreakGlassUse({grantId:emergencyGrant.grantId,actorId:actor.id,patientId:patient.id,purpose});
+  }
+  const effectiveRelationship=emergencyGrant?{
+    allowed:true,
+    code:null,
+    message:null,
+    source:'break-glass-emergency',
+    assignedPatientIds:[...new Set([...(relationship.assignedPatientIds||[]),patient.id])],
+    context:{
+      ...(relationship.context||{}),
+      patientId:patient.id,
+      active:true,
+      emergencyAccess:true,
+      normalRelationshipActive:false,
+      source:'break-glass-emergency',
+      grantId:emergencyGrant.grantId,
+      expiresAt:emergencyGrant.expiresAt,
+      severity:'HIGH'
+    }
+  }:relationship;
   const encounter = encounterId ? encountersById[encounterId] : null;
   if (encounterId && (!encounter || encounter.patient !== patient.id || encounter.tenant !== actor.tenant)) throw new AccessError('PATIENT_SCOPE_MISMATCH','Encounter is not bound to the authorized patient and tenant.');
+  let encounterAccess=null;
+  if(encounter){
+    const decision=encounterAccessDecision({actorId:actor.id,encounterId:encounter.id});
+    if(!decision.allowed) throw new AccessError(decision.code,decision.message);
+    encounterAccess=decision.context;
+  }
   const scopes = requestedScopes.length ? requestedScopes.filter(s => actor.scopes.includes(s)) : [...actor.scopes];
-  return { tenant:actor.tenant, actor:{id:actor.id,display:actor.display,role:actor.role}, patient:{id:patient.id,pseudonym:patient.pseudonym}, encounter:encounter?.id || null, purpose, scopes, app:'clinician', patientAssignment:{assigned:true,source:'synthetic-care-team',assignedPatientIds:[...(careAssignments[actor.id]||[])]}, permittedDataCategories:[] };
+  return { tenant:actor.tenant, actor:{id:actor.id,display:actor.display,role:actor.role}, patient:{id:patient.id,pseudonym:patient.pseudonym}, encounter:encounter?.id || null, encounterAccess, careRelationship:effectiveRelationship.context||null, breakGlass:emergencyGrant?{active:true,mode:'break-glass',grantId:emergencyGrant.grantId,reason:emergencyGrant.reason,stepUpMethod:emergencyGrant.stepUpMethod,grantedAt:emergencyGrant.grantedAt,expiresAt:emergencyGrant.expiresAt,severity:'HIGH'}:null, purpose, scopes, app:'clinician', patientAssignment:{assigned:true,source:effectiveRelationship.source,assignedPatientIds:[...effectiveRelationship.assignedPatientIds],careRelationship:effectiveRelationship.context||null}, permittedDataCategories:[] };
 }
 
 export function resolvePatientSupportContext({ userId='portal-1001', patientId, purpose='patient-support' }={}){

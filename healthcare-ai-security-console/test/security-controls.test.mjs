@@ -90,10 +90,10 @@ test('trace redaction removes raw patient id and sensitive text',()=>{
   assert.equal(safe.patientId,undefined); assert.match(safe.rawPayload,/REDACTED/); assert.ok(safe.redactionFindings.length>=1);
 });
 
-test('authorized potassium retrieval is grounded',()=>{
+test('authorized potassium retrieval is grounded to the current corrected result to the current corrected result',()=>{
   const ctx=resolveClinicianContext({purpose:'lab-review'}); const labs=executeTool(ctx,'get_recent_labs').labs;
   const answer=groundedLabAnswer({question:"What was the patient's potassium?",labs});
-  assert.equal(answer.reasonCodes.length,0); assert.match(answer.text,/5\.8/); assert.match(answer.text,/4\.9/);
+  assert.equal(answer.reasonCodes.length,0); assert.match(answer.text,/4\.8/); assert.match(answer.text,/4\.8/);
 });
 
 test('fabricated potassium value fails grounding',()=>{

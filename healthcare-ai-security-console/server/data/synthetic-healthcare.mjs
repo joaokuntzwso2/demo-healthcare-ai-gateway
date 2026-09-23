@@ -8,7 +8,7 @@ const physicianScopes=['chart:summary','labs:read','medications:read','allergies
 
 export const workforce = {
   'clin-001': { id:'clin-001',tenant:'helios-north',display:'Dr. Avery Morgan',role:'attending-physician',specialty:'Internal Medicine',scopes:[...physicianScopes] },
-  'neph-001': { id:'neph-001',tenant:'helios-north',display:'Dr. Priya Nair',role:'attending-physician',specialty:'Nephrology',scopes:[...physicianScopes] },
+  'neph-001': { id:'neph-001',tenant:'helios-north',display:'Dr. Priya Nair',role:'attending-physician',specialty:'Nephrology',scopes:[...physicianScopes,'approval:submit'] },
   'cardio-001': { id:'cardio-001',tenant:'helios-north',display:'Dr. Lena Brooks',role:'attending-physician',specialty:'Cardiology',scopes:[...physicianScopes] },
   'endo-001': { id:'endo-001',tenant:'helios-north',display:'Dr. Mateo Ruiz',role:'attending-physician',specialty:'Endocrinology',scopes:[...physicianScopes] },
   'hosp-001': { id:'hosp-001',tenant:'helios-north',display:'Dr. Ethan Kim',role:'hospitalist',specialty:'Hospital Medicine',scopes:[...physicianScopes] },
@@ -182,6 +182,15 @@ export const patients = {
     encounters:[{id:'enc-br2',type:'outpatient',start:'2026-09-20T10:00:00Z',reason:'Revisão cardiológica pós-alta',clinician:'cardio-br-001',source:'EHR-ENCOUNTERS'}],
     notes:[],referrals:[],carePlans:[],appointments:[{id:'apt-br2',date:'2026-10-03T10:30:00Z',clinic:'Cardiologia Aurora',status:'booked'}],approvedInstructions:[{id:'inst-br2',text:'Seguir as orientações de alta aprovadas e comparecer ao retorno.',approvedBy:'cardio-br-001'}]
   }
+};
+
+workforce['er-001']={
+  id:'er-001',
+  tenant:'helios-north',
+  display:'Dr. Maya Patel',
+  role:'emergency-physician',
+  specialty:'Emergency Medicine',
+  scopes:['chart:summary','labs:read','medications:read','allergies:read','conditions:read','knowledge:read','medication-safety:read']
 };
 
 export const patientSupportUsers = {

@@ -10,6 +10,13 @@ import { runCopilot } from './services/copilot.mjs';
 import { gatewayRuntimeStatus } from './services/runtime-status.mjs';
 import { runGatewayGuardrailProbe } from './services/demo-journey.mjs';
 import { demoCatalog } from './services/demo-catalog.mjs';
+import { encounterLifecycleSummary, transitionEncounterLifecycle } from './services/encounter-lifecycle.mjs';
+import { careTeamHandoffSummary, transitionCareTeamHandoff } from './services/care-team-handoff.mjs';
+import { requestBreakGlassAccess, completeBreakGlassStepUp, revokeBreakGlassAccess, breakGlassSummary, breakGlassAudit, resetBreakGlassDemo } from './services/break-glass.mjs';
+import { clinicalEvidenceConflictSummary } from './services/clinical-evidence-conflict.mjs';
+import { labFreshnessSummary } from './services/lab-result-lineage.mjs';
+import { createHumanApprovalProposal, reviewHumanApprovalProposal, humanApprovalSummary, humanApprovalAudit, resetHumanApprovalWorkflow } from './services/human-approval-workflow.mjs';
+import { gracefulAbstentionDemoSummary } from './services/clinical-context-completeness.mjs';
 
 const ROOT=resolve(fileURLToPath(new URL('../',import.meta.url)));
 const UI=resolve(ROOT,process.env.NODE_ENV==='production'?'dist':'public');
@@ -42,6 +49,19 @@ const server=http.createServer(async(req,res)=>{try{
   if(req.method==='GET'&&u.pathname==='/api/health')return json(res,200,{ok:true,product:'Helios Clinical AI Security',gateway:gatewayConfig()});
   if(req.method==='GET'&&u.pathname==='/api/gateway-status')return json(res,200,await gatewayRuntimeStatus());
   if(req.method==='GET'&&u.pathname==='/api/demo/catalog')return json(res,200,demoCatalog());
+  if(req.method==='GET'&&u.pathname==='/api/demo/encounter-lifecycle'){const encounterId=u.searchParams.get('encounterId')||'enc-501';const state=encounterLifecycleSummary(encounterId);return state?json(res,200,state):json(res,404,{error:'Encounter not found',code:'ENCOUNTER_NOT_FOUND'});}
+  if(req.method==='POST'&&u.pathname==='/api/demo/encounter-lifecycle'){const b=await jsonBody(req);return json(res,200,transitionEncounterLifecycle(b));}
+  if(req.method==='GET'&&u.pathname==='/api/demo/care-team-handoff'){const patientId=u.searchParams.get('patientId')||'pat-1003';const state=careTeamHandoffSummary(patientId);return state?json(res,200,state):json(res,404,{error:'Care-team handoff workflow not found',code:'CARE_HANDOFF_NOT_FOUND'});}
+  if(req.method==='POST'&&u.pathname==='/api/demo/care-team-handoff'){const b=await jsonBody(req);return json(res,200,transitionCareTeamHandoff(b));}
+  if(req.method==='GET'&&u.pathname==='/api/demo/graceful-abstention'){const patientId=u.searchParams.get('patientId')||'pat-1001';const state=gracefulAbstentionDemoSummary(patientId);return state?json(res,200,state):json(res,404,{error:'Graceful-abstention scenario unavailable for patient',code:'ABSTENTION_SCENARIO_NOT_FOUND'});}
+  if(req.method==='GET'&&u.pathname==='/api/demo/human-approval'){const actorId=u.searchParams.get('actorId')||'neph-001';const patientId=u.searchParams.get('patientId')||'pat-1001';return json(res,200,humanApprovalSummary({actorId,patientId}));}
+  if(req.method==='GET'&&u.pathname==='/api/demo/human-approval/audit'){const actorId=u.searchParams.get('actorId')||null;const patientId=u.searchParams.get('patientId')||null;const proposalId=u.searchParams.get('proposalId')||null;return json(res,200,{events:humanApprovalAudit({actorId,patientId,proposalId,limit:50})});}
+  if(req.method==='POST'&&u.pathname==='/api/demo/human-approval'){const b=await jsonBody(req);if(b.action==='propose')return json(res,200,await createHumanApprovalProposal(b));if(b.action==='approve')return json(res,200,reviewHumanApprovalProposal({...b,decision:'APPROVE'}));if(b.action==='reject')return json(res,200,reviewHumanApprovalProposal({...b,decision:'REJECT'}));if(b.action==='reset')return json(res,200,resetHumanApprovalWorkflow(b));return json(res,400,{error:'Unsupported human-approval action',code:'INVALID_HUMAN_APPROVAL_ACTION'});}
+  if(req.method==='GET'&&u.pathname==='/api/demo/lab-freshness'){const patientId=u.searchParams.get('patientId')||'pat-1001';const state=labFreshnessSummary(patientId);return state?json(res,200,state):json(res,404,{error:'No versioned lab-result scenario for patient',code:'LAB_FRESHNESS_SCENARIO_NOT_FOUND'});}
+  if(req.method==='GET'&&u.pathname==='/api/demo/conflicting-evidence'){const patientId=u.searchParams.get('patientId')||'pat-1001';const state=clinicalEvidenceConflictSummary(patientId);return state?json(res,200,state):json(res,404,{error:'No conflicting-evidence scenario for patient',code:'CONFLICT_SCENARIO_NOT_FOUND'});}
+  if(req.method==='GET'&&u.pathname==='/api/demo/break-glass'){const actorId=u.searchParams.get('actorId')||'er-001';const patientId=u.searchParams.get('patientId')||'pat-1001';return json(res,200,breakGlassSummary({actorId,patientId}));}
+  if(req.method==='GET'&&u.pathname==='/api/demo/break-glass/audit'){const actorId=u.searchParams.get('actorId')||null;const patientId=u.searchParams.get('patientId')||null;return json(res,200,{events:breakGlassAudit({actorId,patientId,limit:50})});}
+  if(req.method==='POST'&&u.pathname==='/api/demo/break-glass'){const b=await jsonBody(req);if(b.action==='request')return json(res,200,requestBreakGlassAccess(b));if(b.action==='verify-step-up')return json(res,200,completeBreakGlassStepUp(b));if(b.action==='revoke')return json(res,200,revokeBreakGlassAccess(b));if(b.action==='reset')return json(res,200,resetBreakGlassDemo(b));return json(res,400,{error:'Unsupported break-glass action',code:'INVALID_BREAK_GLASS_ACTION'});}
   if(req.method==='GET'&&u.pathname==='/api/traces')return json(res,200,{traces:listTraces()});
   if(req.method==='GET'&&u.pathname.startsWith('/api/traces/')){const t=getTrace(u.pathname.split('/').pop());return t?json(res,200,t):json(res,404,{error:'Trace not found'});}
   if(req.method==='GET'&&u.pathname==='/api/architecture')return json(res,200,architecture);

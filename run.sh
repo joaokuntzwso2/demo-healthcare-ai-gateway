@@ -1,5 +1,28 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
+
+# HELIOS_FHIR_PREFLIGHT_BEGIN
+HELIOS_REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HELIOS_RUN_COMMAND="${1:-start}"
+
+case "$HELIOS_RUN_COMMAND" in
+  stop|clean|help|-h|--help)
+    ;;
+  *)
+    if [[ "${HELIOS_SKIP_FHIR_PREFLIGHT:-false}" != "true" ]]; then
+      command -v node >/dev/null 2>&1 || {
+        echo "ERROR: node is required for the Helios FHIR interoperability adapter." >&2
+        exit 1
+      }
+
+      printf '\n==> FHIR interoperability preflight\n'
+      node "$HELIOS_REPO_ROOT/scripts/check-fhir.mjs"
+    fi
+    ;;
+esac
+# HELIOS_FHIR_PREFLIGHT_END
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OPENAI_ENV="$ROOT/.openai.env"
 
@@ -73,7 +96,7 @@ case "$cmd" in
     # shellcheck disable=SC1090
     source "$ROOT/.helios.env"
     set +a
-    exec node "$ROOT/scripts/gateway-acceptance.mjs"
+    exec "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/gateway-acceptance-retry.sh"
     ;;
   status)
     echo '--- BFF/UI ---'

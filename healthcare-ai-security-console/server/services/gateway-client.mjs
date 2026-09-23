@@ -63,7 +63,8 @@ function signedHeliosContextHeaders(context){
     purpose:context.purpose,
     scopes:context.scopes,
     app:context.app,
-    breakGlass:context.breakGlass||null
+    breakGlass:context.breakGlass?{active:context.breakGlass.active,mode:context.breakGlass.mode,grantId:context.breakGlass.grantId,stepUpMethod:context.breakGlass.stepUpMethod,expiresAt:context.breakGlass.expiresAt,severity:context.breakGlass.severity}:null,
+    careRelationship:context.careRelationship?{phaseId:context.careRelationship.phaseId,careSetting:context.careRelationship.careSetting,service:context.careRelationship.service,currentOwnerActorId:context.careRelationship.currentOwnerActorId,active:context.careRelationship.active,relationshipVersion:context.careRelationship.relationshipVersion}:null
   };
   const encoded=Buffer.from(JSON.stringify(heliosContext),'utf8').toString('base64url');
   const signingKey=process.env.HELIOS_CONTEXT_SIGNING_KEY;

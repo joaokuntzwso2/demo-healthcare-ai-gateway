@@ -1,5 +1,6 @@
 import { patients } from '../data/synthetic-healthcare.mjs';
 import { AccessError } from './context.mjs';
+import { encounterWithLifecycle } from './encounter-lifecycle.mjs';
 
 export const purposeProfiles = {
   'appointment-scheduling': { categories:['appointments'], scopes:['appointment:own:read'] },
@@ -21,7 +22,7 @@ export function minimizedPatientView(context, purpose=context.purpose){
   if (!patient || patient.tenant !== context.tenant) throw new AccessError('PATIENT_SCOPE_MISMATCH','Patient context is outside tenant boundary.');
   const out={patient:{pseudonym:patient.pseudonym},purpose,categoriesReleased:[]};
   for(const category of profile.categories){
-    if(category==='encounters'){ out.encounters=patient.encounters.filter(e=>!context.encounter || e.id===context.encounter); out.categoriesReleased.push('encounters'); }
+    if(category==='encounters'){ out.encounters=patient.encounters.filter(e=>!context.encounter || e.id===context.encounter).map(encounterWithLifecycle); out.categoriesReleased.push('encounters'); }
     if(category==='conditions'){ out.conditions=patient.conditions; out.categoriesReleased.push('conditions'); }
     if(category==='medications'){ out.medications=patient.medications; out.categoriesReleased.push('medications'); }
     if(category==='allergies'){ out.allergies=patient.allergies; out.categoriesReleased.push('allergies'); }
