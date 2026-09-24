@@ -3,6 +3,7 @@ import { patients, workforce, patientSupportUsers, encountersById, careAssignmen
 import { encounterAccessDecision } from './encounter-lifecycle.mjs';
 import { careRelationshipDecision } from './care-team-handoff.mjs';
 import { activeBreakGlassGrant, recordBreakGlassUse } from './break-glass.mjs';
+import { restrictedAuthorizationProjection } from './restricted-clinical-information.mjs';
 
 const HMAC_KEY = process.env.HELIOS_PSEUDONYM_KEY || 'helios-demo-only-pseudonym-key';
 export function pseudonymize(value){ return 'PX-' + crypto.createHmac('sha256', HMAC_KEY).update(String(value)).digest('hex').slice(0,12).toUpperCase(); }
@@ -51,7 +52,8 @@ export function resolveClinicianContext({ actorId='clin-001', patientId='pat-100
     encounterAccess=decision.context;
   }
   const scopes = requestedScopes.length ? requestedScopes.filter(s => actor.scopes.includes(s)) : [...actor.scopes];
-  return { tenant:actor.tenant, actor:{id:actor.id,display:actor.display,role:actor.role}, patient:{id:patient.id,pseudonym:patient.pseudonym}, encounter:encounter?.id || null, encounterAccess, careRelationship:effectiveRelationship.context||null, breakGlass:emergencyGrant?{active:true,mode:'break-glass',grantId:emergencyGrant.grantId,reason:emergencyGrant.reason,stepUpMethod:emergencyGrant.stepUpMethod,grantedAt:emergencyGrant.grantedAt,expiresAt:emergencyGrant.expiresAt,severity:'HIGH'}:null, purpose, scopes, app:'clinician', patientAssignment:{assigned:true,source:effectiveRelationship.source,assignedPatientIds:[...effectiveRelationship.assignedPatientIds],careRelationship:effectiveRelationship.context||null}, permittedDataCategories:[] };
+  const restrictedAuthorization=restrictedAuthorizationProjection({actorId:actor.id,patientId:patient.id,purpose,scopes});
+  return { tenant:actor.tenant, actor:{id:actor.id,display:actor.display,role:actor.role}, patient:{id:patient.id,pseudonym:patient.pseudonym}, encounter:encounter?.id || null, encounterAccess, careRelationship:effectiveRelationship.context||null, breakGlass:emergencyGrant?{active:true,mode:'break-glass',grantId:emergencyGrant.grantId,reason:emergencyGrant.reason,stepUpMethod:emergencyGrant.stepUpMethod,grantedAt:emergencyGrant.grantedAt,expiresAt:emergencyGrant.expiresAt,severity:'HIGH'}:null, restrictedAuthorization, purpose, scopes, app:'clinician', patientAssignment:{assigned:true,source:effectiveRelationship.source,assignedPatientIds:[...effectiveRelationship.assignedPatientIds],careRelationship:effectiveRelationship.context||null}, permittedDataCategories:[] };
 }
 
 export function resolvePatientSupportContext({ userId='portal-1001', patientId, purpose='patient-support' }={}){

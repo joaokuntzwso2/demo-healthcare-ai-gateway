@@ -9,6 +9,7 @@ const clinician={
   get_medications:{description:'Retrieve authoritative current synthetic medication records for the server-bound patient.',parameters:obj({})},
   get_allergies:{description:'Retrieve authoritative synthetic allergy records for the server-bound patient.',parameters:obj({})},
   get_conditions:{description:'Retrieve authoritative synthetic condition records for the server-bound patient.',parameters:obj({})},
+  get_restricted_clinical_information:{description:'Retrieve a separately protected behavioral-health clinical segment for the server-bound patient. This requires an active care relationship, the restricted behavioral-health scope, an active patient authorization, and the behavioral-health-treatment purpose. Ordinary chart access is insufficient.',parameters:obj({})},
   search_clinical_knowledge:{description:'Search tenant-scoped trusted/versioned clinical knowledge. Uploaded or referral evidence is not automatically authority.',parameters:obj({query:s('Clinical knowledge question or topic.')},['query'])},
   check_medication_safety:{description:'Run the deterministic DEMO safety fixture. This is not a medical knowledge engine.',parameters:obj({medication:s('Synthetic medication code, for example SYNTH-MED-A.'),dose:n('Synthetic demo dose.'),unit:s('Synthetic dose unit if provided.')},['medication','dose'])},
   draft_clinical_note:{description:'Create a non-authoritative draft note from a purpose-minimized server-side view. It always requires clinician review.',parameters:obj({})},

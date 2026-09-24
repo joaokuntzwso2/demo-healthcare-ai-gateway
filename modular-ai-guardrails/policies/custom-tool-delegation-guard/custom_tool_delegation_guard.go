@@ -224,7 +224,7 @@ func (p *Policy) OnRequestBody(_ context.Context, req *policy.RequestContext, _ 
 	if c == nil {
 		return nil
 	}
-	allowedClin := map[string]bool{"get_patient_summary": true, "get_encounter": true, "get_recent_labs": true, "get_medications": true, "get_allergies": true, "get_conditions": true, "search_clinical_knowledge": true, "check_medication_safety": true, "draft_clinical_note": true, "request_medication_order": true, "request_test_order": true, "submit_for_clinician_approval": true}
+	allowedClin := map[string]bool{"get_patient_summary": true, "get_encounter": true, "get_recent_labs": true, "get_medications": true, "get_allergies": true, "get_conditions": true, "search_clinical_knowledge": true, "check_medication_safety": true, "draft_clinical_note": true, "request_medication_order": true, "request_test_order": true, "submit_for_clinician_approval": true, "get_restricted_clinical_information": true}
 	allowedPatient := map[string]bool{"get_own_appointment": true, "get_own_approved_instructions": true, "search_patient_education": true, "request_callback": true}
 	for _, n := range toolNames(v) {
 		ok := allowedClin[n]

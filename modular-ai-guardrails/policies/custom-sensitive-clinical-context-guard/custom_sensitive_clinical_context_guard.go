@@ -176,6 +176,30 @@ func hasScope(m map[string]interface{}, want string) bool {
 	}
 	return false
 }
+
+func boolField(m map[string]interface{}, k string) bool {
+	v, _ := m[k].(bool)
+	return v
+}
+
+func restrictedClinicalAccessAllowed(c map[string]interface{}) bool {
+	if c == nil || str(c, "app") != "clinician" || str(c, "purpose") != "behavioral-health-treatment" {
+		return false
+	}
+	if !hasScope(c, "restricted:behavioral-health:read") {
+		return false
+	}
+	auth, _ := c["restrictedAuthorization"].(map[string]interface{})
+	if auth == nil {
+		return false
+	}
+	return str(auth, "category") == "behavioral-health" &&
+		boolField(auth, "careRelationship") &&
+		boolField(auth, "scopePresent") &&
+		boolField(auth, "patientAuthorizationPresent") &&
+		boolField(auth, "purposeAuthorized") &&
+		boolField(auth, "active")
+}
 func signedContextPayload(m map[string]interface{}) string {
 	return strings.Join([]string{str(m, "tenant"), str(m, "actor"), str(m, "role"), str(m, "patientId"), str(m, "patientPseudonym"), str(m, "encounter"), str(m, "purpose"), str(m, "app"), strings.Join(scopes(m), ",")}, "|")
 }
@@ -254,6 +278,15 @@ func (p *Policy) OnRequestBody(_ context.Context, req *policy.RequestContext, _ 
 	text := strings.ToLower(userMessagesText(v))
 	if str(c, "app") == "patient-support" && containsAny(text, `\braw\s+chart\b`, `\bget_patient_summary\b`, `\bget_recent_labs\b`, `\bget_medications\b`, `\bdiagnos(?:is|es)\b`) {
 		setFinding(req, "CLINICAL_DATA_NOT_AUTHORIZED", "Patient-support proxy cannot receive raw clinician chart context.", nil)
+	}
+	if str(c, "app") == "clinician" && containsAny(text, `\bbehavioral[\s-]+health\b`, `\bmental[\s-]+health\b`, `\bpsychiatr\w*\b`, `\bpsychotherap\w*\b`, `\brestricted\s+(?:clinical\s+)?record\b`, `\brestricted\s+clinical\s+information\b`) {
+		if !validContextSignature(req) {
+			setFinding(req, "CLINICAL_DATA_NOT_AUTHORIZED", "Restricted clinical information requires a valid server-signed Helios context.", map[string]interface{}{"category": "behavioral-health"})
+			return nil
+		}
+		if !restrictedClinicalAccessAllowed(c) {
+			setFinding(req, "RESTRICTED_RECORD_ACCESS_DENIED", "Restricted behavioral-health information requires additional server-bound authorization.", map[string]interface{}{"category": "behavioral-health", "requiredScope": "restricted:behavioral-health:read", "requiredPurpose": "behavioral-health-treatment"})
+		}
 	}
 	return nil
 }

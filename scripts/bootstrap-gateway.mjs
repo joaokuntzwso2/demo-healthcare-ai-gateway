@@ -13,7 +13,7 @@ if (!openai) throw new Error('OPENAI_API_KEY is required.');
 if (!gatewayUrl) throw new Error('WSO2_AI_GATEWAY_URL is required.');
 
 const auth = 'Basic ' + Buffer.from(`${user}:${pass}`).toString('base64');
-const PROVIDER = 'enterprise-openai';
+const PROVIDER = process.env.WSO2_PROVIDER_ID || 'helios-enterprise-openai';
 const PROVIDER_HEADER = 'X-API-Key';
 const CLINICAL = 'clinical-ai-secure';
 const PATIENT = 'patient-support-ai-secure';
@@ -98,7 +98,7 @@ async function purgeNonOpenAIProviders() {
   if (!list.ok) throw new Error(`Listing LLM providers failed HTTP ${list.status}: ${list.text}`);
   for (const item of listItems(list.data)) {
     const id = item?.metadata?.name || item?.id || item?.name;
-    if (!id || id === PROVIDER) continue;
+    if (!id || id === PROVIDER || id === 'enterprise-openai') continue;
     const cur = await get('llm-providers', id);
     if (cur.ok) await revokeAllKeys('llm-providers', id);
     const d = await req(`${base}/llm-providers/${encodeURIComponent(id)}`, {method:'DELETE'});
@@ -229,6 +229,7 @@ async function writeRuntimeEnvs(providerKey, clinicalKey, patientKey) {
     LLM_MODE:'gateway',
     PORT:'5173',
     WSO2_AI_GATEWAY_URL:gatewayUrl,
+    WSO2_PROVIDER_ID:PROVIDER,
     WSO2_TLS_INSECURE:'true',
     WSO2_API_KEY_HEADER:'X-API-Key',
     WSO2_DEFAULT_MODEL:model,

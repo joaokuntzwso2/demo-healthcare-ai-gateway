@@ -14,7 +14,7 @@ export function gatewayConfig(){
   return {
     mode:MODE(),
     baseUrl:BASE(),
-    provider:'enterprise-openai',
+    provider:process.env.WSO2_PROVIDER_ID||'helios-enterprise-openai',
     clinicianProxy:'clinical-ai-secure',
     patientProxy:'patient-support-ai-secure',
     clinicianContext:CLINICAL_CONTEXT(),
@@ -64,7 +64,8 @@ function signedHeliosContextHeaders(context){
     scopes:context.scopes,
     app:context.app,
     breakGlass:context.breakGlass?{active:context.breakGlass.active,mode:context.breakGlass.mode,grantId:context.breakGlass.grantId,stepUpMethod:context.breakGlass.stepUpMethod,expiresAt:context.breakGlass.expiresAt,severity:context.breakGlass.severity}:null,
-    careRelationship:context.careRelationship?{phaseId:context.careRelationship.phaseId,careSetting:context.careRelationship.careSetting,service:context.careRelationship.service,currentOwnerActorId:context.careRelationship.currentOwnerActorId,active:context.careRelationship.active,relationshipVersion:context.careRelationship.relationshipVersion}:null
+    careRelationship:context.careRelationship?{phaseId:context.careRelationship.phaseId,careSetting:context.careRelationship.careSetting,service:context.careRelationship.service,currentOwnerActorId:context.careRelationship.currentOwnerActorId,active:context.careRelationship.active,relationshipVersion:context.careRelationship.relationshipVersion}:null,
+    restrictedAuthorization:context.restrictedAuthorization?{type:context.restrictedAuthorization.type,category:context.restrictedAuthorization.category,requiredScope:context.restrictedAuthorization.requiredScope,requiredPurpose:context.restrictedAuthorization.requiredPurpose,purpose:context.restrictedAuthorization.purpose,careRelationship:context.restrictedAuthorization.careRelationship,scopePresent:context.restrictedAuthorization.scopePresent,patientAuthorizationPresent:context.restrictedAuthorization.patientAuthorizationPresent,purposeAuthorized:context.restrictedAuthorization.purposeAuthorized,active:context.restrictedAuthorization.active,authorizationId:context.restrictedAuthorization.authorizationId,expiresAt:context.restrictedAuthorization.expiresAt}:null
   };
   const encoded=Buffer.from(JSON.stringify(heliosContext),'utf8').toString('base64url');
   const signingKey=process.env.HELIOS_CONTEXT_SIGNING_KEY;

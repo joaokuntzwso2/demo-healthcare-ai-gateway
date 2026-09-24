@@ -12,9 +12,25 @@ test('custom gateway build retains WSO2 policies required by banking-compatible 
 
 test('bootstrap creates a separate provider access boundary and binds proxies to that key', async()=>{
   const src=await readFile(resolve(import.meta.dirname,'../../scripts/bootstrap-gateway.mjs'),'utf8');
-  assert.match(src,/const PROVIDER_HEADER='X-API-Key'/);
-  assert.match(src,/generateKey\('llm-providers',PROVIDER,'provider-access'\)/);
-  assert.match(src,/obj\.spec\.provider=.*auth:\{type:'api-key',header:PROVIDER_HEADER,value:providerKey\}/s);
+
+  // Provider authentication remains a distinct API-key boundary.
+  assert.match(
+    src,
+    /const\s+PROVIDER_HEADER\s*=\s*['"]X-API-Key['"]/
+  );
+
+  // Bootstrap intentionally generates a unique provider key on every run
+  // to avoid delete/recreate propagation races in the Gateway runtime.
+  assert.match(
+    src,
+    /generateKey\(\s*'llm-providers'\s*,\s*PROVIDER\s*,\s*`helios-provider-\$\{runId\}`\s*\)/
+  );
+
+  // The generated provider key is bound to each application proxy.
+  assert.match(
+    src,
+    /provider:\{id:PROVIDER,\s*auth:\{type:'api-key',\s*header:PROVIDER_HEADER,\s*value:providerKey\}\}/s
+  );
 });
 
 test('provider acceptance uses provider key while application calls use distinct proxy keys', async()=>{

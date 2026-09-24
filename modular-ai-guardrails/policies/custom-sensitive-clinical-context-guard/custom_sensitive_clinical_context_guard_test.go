@@ -50,3 +50,50 @@ func TestUserMessagesTextStillDetectsPatientEscalation(t *testing.T) {
 		t.Fatalf("patient escalation disappeared from inspected text: %q", got)
 	}
 }
+
+
+func restrictedTestContext() map[string]interface{} {
+	return map[string]interface{}{
+		"app":     "clinician",
+		"purpose": "behavioral-health-treatment",
+		"scopes":  []interface{}{"chart:summary", "restricted:behavioral-health:read"},
+		"restrictedAuthorization": map[string]interface{}{
+			"category":                    "behavioral-health",
+			"careRelationship":            true,
+			"scopePresent":                true,
+			"patientAuthorizationPresent": true,
+			"purposeAuthorized":           true,
+			"active":                      true,
+		},
+	}
+}
+
+func TestRestrictedClinicalAccessRequiresScopeAndAuthorization(t *testing.T) {
+	c := restrictedTestContext()
+	if !restrictedClinicalAccessAllowed(c) {
+		t.Fatal("expected fully authorized restricted context to be allowed")
+	}
+
+	c["scopes"] = []interface{}{"chart:summary"}
+	if restrictedClinicalAccessAllowed(c) {
+		t.Fatal("ordinary chart scope must not authorize restricted clinical information")
+	}
+}
+
+func TestRestrictedClinicalAccessRequiresActivePatientAuthorization(t *testing.T) {
+	c := restrictedTestContext()
+	auth := c["restrictedAuthorization"].(map[string]interface{})
+	auth["patientAuthorizationPresent"] = false
+	auth["active"] = false
+	if restrictedClinicalAccessAllowed(c) {
+		t.Fatal("revoked patient authorization must deny restricted clinical information")
+	}
+}
+
+func TestRestrictedClinicalAccessRequiresPurposeBinding(t *testing.T) {
+	c := restrictedTestContext()
+	c["purpose"] = "encounter-summary"
+	if restrictedClinicalAccessAllowed(c) {
+		t.Fatal("ordinary encounter-summary purpose must not authorize restricted clinical information")
+	}
+}

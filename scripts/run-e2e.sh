@@ -35,7 +35,7 @@ export WSO2_AI_GATEWAY_URL="https://localhost:${HTTPS_PORT}"
 echo "Gateway ingress detected at $WSO2_AI_GATEWAY_URL"
 
 echo
-echo '==> Destructive Helios application reset: revoke keys, delete all LLM proxies, keep/reconfigure enterprise-openai, recreate both proxies and fresh keys'
+echo '==> Destructive Helios application reset: revoke keys, delete all LLM proxies, preserve external enterprise-openai, recreate Helios local provider, both proxies and fresh keys'
 OPENAI_API_KEY="$OPENAI_API_KEY" \
 OPENAI_MODEL="${OPENAI_MODEL:-gpt-4o-mini}" \
 WSO2_AI_GATEWAY_URL="$WSO2_AI_GATEWAY_URL" \
