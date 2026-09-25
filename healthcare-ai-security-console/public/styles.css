@@ -70,3 +70,18 @@
 .role-authority{display:flex;flex-direction:column;gap:4px;padding:10px;border-radius:8px;background:var(--surface-2,#f5f6f8)}
 .role-buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}.role-live-result{margin-top:14px;padding-top:12px;border-top:1px solid var(--border,#ddd)}
 .role-principle{margin-top:18px}@media(max-width:900px){.role-grid{grid-template-columns:1fr}}
+
+
+/* clinical-knowledge-lifecycle */
+.knowledge-policy-banner{margin:16px 0 18px}
+.knowledge-life-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.knowledge-life-card{min-width:0}
+.knowledge-life-card.active,.knowledge-life-card.stale,.knowledge-life-card.referral{border-top:3px solid currentColor}
+.knowledge-life-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.knowledge-life-head h3{font-size:1rem;margin:.25rem 0;overflow-wrap:anywhere}
+.knowledge-life-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}
+.knowledge-life-meta>div{display:flex;flex-direction:column;gap:3px;padding:9px;border-radius:8px;background:var(--surface-2,#f5f6f8)}
+.knowledge-life-meta strong{font-size:.78rem;overflow-wrap:anywhere}
+.knowledge-reasons{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.knowledge-retrieval-result,.knowledge-lifecycle-principle{margin-top:18px}
+@media(max-width:1000px){.knowledge-life-grid{grid-template-columns:1fr}.knowledge-life-meta{grid-template-columns:1fr 1fr}}

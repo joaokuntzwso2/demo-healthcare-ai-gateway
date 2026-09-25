@@ -23,6 +23,7 @@ import { restrictedClinicalInformationSummary, restrictedClinicalAudit, setRestr
 
 import { tenantIsolationSummary, resolveTenantScopedPatient, tenantIsolationAudit, resetTenantIsolationAudit, runCrossTenantGatewayProbe } from './services/multi-tenant-isolation.mjs';
 import { roleBasedDifferencesSummary, evaluateRole, runSameQuestionForRole, runRoleGatewayProbe, roleBasedAudit, resetRoleBasedAudit } from './services/role-based-differences.mjs';
+import { clinicalKnowledgeLifecycleSummary, retrieveActiveClinicalGuideline, inspectKnowledgeLifecycleSource, resetClinicalKnowledgeLifecycle, runKnowledgeLifecycleGatewayProbe, clinicalKnowledgeLifecycleAudit } from './services/clinical-knowledge-lifecycle.mjs';
 const ROOT=resolve(fileURLToPath(new URL('../',import.meta.url)));
 const UI=resolve(ROOT,process.env.NODE_ENV==='production'?'dist':'public');
 const PORT=Number(process.env.PORT||5173);
@@ -54,6 +55,17 @@ const server=http.createServer(async(req,res)=>{try{
   if(req.method==='GET'&&u.pathname==='/api/health')return json(res,200,{ok:true,product:'Helios Clinical AI Security',gateway:gatewayConfig()});
   if(req.method==='GET'&&u.pathname==='/api/gateway-status')return json(res,200,await gatewayRuntimeStatus());
   if(req.method==='GET'&&u.pathname==='/api/demo/catalog')return json(res,200,demoCatalog());
+  if(req.method==='GET'&&u.pathname==='/api/demo/clinical-knowledge-lifecycle')return json(res,200,clinicalKnowledgeLifecycleSummary());
+  if(req.method==='GET'&&u.pathname==='/api/demo/clinical-knowledge-lifecycle/audit')return json(res,200,{events:clinicalKnowledgeLifecycleAudit({limit:50})});
+  if(req.method==='POST'&&u.pathname==='/api/demo/clinical-knowledge-lifecycle'){
+    const b=await jsonBody(req);
+    if(b.action==='reset')return json(res,200,await resetClinicalKnowledgeLifecycle());
+    if(b.action==='retrieve-active')return json(res,200,retrieveActiveClinicalGuideline(b));
+    if(b.action==='inspect')return json(res,200,inspectKnowledgeLifecycleSource(b.kind));
+    if(b.action==='gateway-probe')return json(res,200,await runKnowledgeLifecycleGatewayProbe(b.kind));
+    return json(res,400,{error:'Unsupported clinical-knowledge-lifecycle action',code:'INVALID_KNOWLEDGE_LIFECYCLE_ACTION'});
+  }
+
   if(req.method==='GET'&&u.pathname==='/api/demo/role-based-differences')return json(res,200,roleBasedDifferencesSummary());
   if(req.method==='GET'&&u.pathname==='/api/demo/role-based-differences/audit')return json(res,200,{events:roleBasedAudit({actorId:u.searchParams.get('actorId')||null,limit:50})});
   if(req.method==='POST'&&u.pathname==='/api/demo/role-based-differences'){

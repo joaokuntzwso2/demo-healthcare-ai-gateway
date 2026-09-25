@@ -1,7 +1,7 @@
 import React,{useEffect,useMemo,useState} from 'https://esm.sh/react@19.2.0';
 import{createRoot}from'https://esm.sh/react-dom@19.2.0/client';
 const h=React.createElement;
-const PAGES=['Executive Demo','Clinician AI','Patient AI','24 Policies','Guardrails','Role Differences','Tenant Isolation','Evidence'];
+const PAGES=['Executive Demo','Clinician AI','Patient AI','24 Policies','Guardrails','Knowledge Lifecycle','Role Differences','Tenant Isolation','Evidence'];
 const api=async(path,opts={})=>{const r=await fetch(path,opts);const j=await r.json();if(!r.ok)throw new Error(j.error||`HTTP ${r.status}`);return j};
 const post=(path,body)=>api(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
 const pretty=x=>JSON.stringify(x,null,2);const short=s=>String(s||'').replace(/_/g,' ');
@@ -804,6 +804,130 @@ function Guardrails({seed,onSeedConsumed}){
   );
 }
 
+
+function KnowledgeLifecycle(){
+  const [summary,setSummary]=useState(null);
+  const [retrieval,setRetrieval]=useState(null);
+  const [probes,setProbes]=useState({});
+  const [busy,setBusy]=useState(null);
+  const [error,setError]=useState(null);
+
+  const load=async()=>setSummary(await api('/api/demo/clinical-knowledge-lifecycle'));
+  useEffect(()=>{load().catch(e=>setError(e.message))},[]);
+
+  async function action(name,kind){
+    setBusy(kind||name);
+    setError(null);
+    try{
+      if(name==='retrieve-active'){
+        const v=await post('/api/demo/clinical-knowledge-lifecycle',{action:'retrieve-active'});
+        setRetrieval(v);
+      }else if(name==='probe'){
+        const v=await post('/api/demo/clinical-knowledge-lifecycle',{action:'gateway-probe',kind});
+        setProbes(x=>({...x,[kind]:v}));
+      }else if(name==='reset'){
+        await post('/api/demo/clinical-knowledge-lifecycle',{action:'reset'});
+        setRetrieval(null);
+        setProbes({});
+        await load();
+      }
+    }catch(e){
+      setError(e.message);
+    }finally{
+      setBusy(null);
+    }
+  }
+
+  if(!summary){
+    return h('div',null,
+      h(SectionTitle,{
+        eyebrow:'KNOWLEDGE GOVERNANCE',
+        title:'Clinical knowledge lifecycle',
+        copy:'Loading governed knowledge sources…'
+      }),
+      error&&h(Pill,{t:'danger'},error)
+    );
+  }
+
+  const card=(kind,title,source,toneName)=>{
+    const probeKey=kind==='referral'?'malicious-referral':kind;
+    const probe=probes[probeKey];
+
+    return h(Panel,{className:`knowledge-life-card ${kind}`},
+      h('div',{className:'knowledge-life-head'},
+        h('div',null,
+          h('small',null,title),
+          h('h3',null,source?.filename||'Unavailable')
+        ),
+        h(Pill,{t:toneName},source?.lifecycleState||'UNKNOWN')
+      ),
+      h('div',{className:'knowledge-life-meta'},
+        h('div',null,h('small',null,'Version'),h('strong',null,source?.version||'—')),
+        h('div',null,h('small',null,'Trust'),h('strong',null,source?.trustClassification||'—')),
+        h('div',null,h('small',null,'Retrieval'),h('strong',null,source?.eligibleForRetrieval?'ELIGIBLE':'EXCLUDED')),
+        h('div',null,h('small',null,'Publisher'),h('strong',null,source?.publisher||'—'))
+      ),
+      source?.reasonCodes?.length
+        ?h('div',{className:'knowledge-reasons'},...source.reasonCodes.map(x=>h(Pill,{key:x,t:'neutral'},x)))
+        :null,
+      source?.provenance&&h(RawDetails,{value:{provenance:source.provenance},label:'Provenance'}),
+      kind==='active'&&h(Button,{
+        disabled:!!busy,
+        onClick:()=>action('retrieve-active')
+      },busy==='retrieve-active'?'Retrieving…':'Retrieve active guideline'),
+      kind==='stale'&&h(Button,{
+        kind:'secondary',
+        disabled:!!busy,
+        onClick:()=>action('probe','stale')
+      },busy==='stale'?'Probing…':'Verify WSO2 rejects stale v2'),
+      kind==='referral'&&h(Button,{
+        kind:'secondary',
+        disabled:!!busy,
+        onClick:()=>action('probe','malicious-referral')
+      },busy==='malicious-referral'?'Probing…':'Verify WSO2 blocks malicious referral'),
+      probe&&h('div',{className:'guardrail-hit'},
+        h(Icon,{name:'shield'}),
+        h('div',null,
+          h('small',null,'WSO2 ENFORCEMENT'),
+          h('strong',null,probe.guardrail?.policy||'Gateway'),
+          h('p',null,probe.guardrail?.reason||probe.decision)
+        ),
+        h(Pill,{t:'danger'},probe.guardrail?.reasonCode||probe.decision)
+      )
+    );
+  };
+
+  return h('div',null,
+    h(SectionTitle,{
+      eyebrow:'KNOWLEDGE GOVERNANCE',
+      title:'Clinical evidence has provenance, lifecycle and trust.',
+      copy:'Only active, signed and governed knowledge can enter model retrieval. Superseded guidance stays auditable but stale, while untrusted document instructions are quarantined as evidence rather than authority.'
+    }),
+    h(Panel,{className:'knowledge-policy-banner'},
+      h('small',null,'RETRIEVAL CONTRACT'),
+      h('h3',null,'ACTIVE + TRUSTED_GOVERNED + valid provenance'),
+      h('p',null,summary.policy.retrievalRule)
+    ),
+    h('div',{className:'knowledge-life-grid'},
+      card('active','CURRENT GUIDELINE',summary.sources.active,'success'),
+      card('stale','SUPERSEDED GUIDELINE',summary.sources.stale,'neutral'),
+      card('referral','EXTERNAL REFERRAL',summary.sources.maliciousReferral,'danger')
+    ),
+    retrieval&&h(Panel,{className:'knowledge-retrieval-result'},
+      h('small',null,'GOVERNED RETRIEVAL RESULT'),
+      h('h3',null,retrieval.decision),
+      h('p',null,`Active version: ${retrieval.activeGuideline?.version||'none'} · stale v2 returned: ${retrieval.staleGuidelineReturned?'YES':'NO'}`),
+      h(RawDetails,{value:retrieval})
+    ),
+    h(Panel,{className:'knowledge-lifecycle-principle'},
+      h('div',{className:'mini-heading'},'CONTROL PRINCIPLE'),
+      h('p',null,'A vector match is not enough. Source identity, version, effective/review dates, cryptographic provenance, lifecycle state and trust classification are evaluated before evidence becomes eligible for model retrieval.')
+    ),
+    h(Button,{kind:'ghost',disabled:!!busy,onClick:()=>action('reset')},'Reset lifecycle demo'),
+    error&&h(Pill,{t:'danger'},error)
+  );
+}
+
 function RoleDifferences(){
  const [summary,setSummary]=useState(null),[results,setResults]=useState({}),[probes,setProbes]=useState({}),[busy,setBusy]=useState(null),[error,setError]=useState(null);
  useEffect(()=>{api('/api/demo/role-based-differences').then(setSummary).catch(e=>setError(e.message))},[]);
@@ -843,5 +967,5 @@ function TenantIsolation(){const [summary,setSummary]=useState(null),[local,setL
 
 function Evidence({runtime}){const [traces,setTraces]=useState([]),[filter,setFilter]=useState('all');const load=()=>api('/api/traces').then(x=>setTraces(x.traces)).catch(()=>{});useEffect(()=>{load();const t=setInterval(load,2500);return()=>clearInterval(t)},[]);const shown=traces.filter(t=>filter==='all'||(filter==='allowed'?/ALLOW|REVIEW|DRAFT|QUEUED/i.test(t.finalDecision):/BLOCK|ABSTAIN|HOLD/i.test(t.finalDecision)));return h('div',null,h(SectionTitle,{eyebrow:'AUDITABLE AI',title:'Every governed decision leaves evidence',copy:'Show leadership that the AI experience is observable without dumping raw patient data into logs.'}),h('div',{className:'evidence-summary'},h(Panel,null,h('small',null,'LIVE PROXIES'),h('strong',null,runtime?.proxies?.filter(x=>x.ok).length||0),h('span',null,' / 2 active')),h(Panel,null,h('small',null,'RECENT TRACES'),h('strong',null,traces.length),h('span',null,' in this process')),h(Panel,null,h('small',null,'POLICY STAGES'),h('strong',null,runtime?.proxies?.[0]?.policies?.length||0),h('span',null,' per application proxy'))),h('div',{className:'trace-toolbar'},h('div',{className:'segmented'},['all','allowed','blocked'].map(x=>h('button',{key:x,className:filter===x?'active':'',onClick:()=>setFilter(x)},x))),h('span',null,'Auto-refreshing')),h('div',{className:'trace-cards'},shown.length?shown.map(t=>h('details',{className:'trace-card',key:t.traceId},h('summary',null,h('div',{className:'trace-decision'},h(Pill,{t:tone(t.finalDecision)},short(t.finalDecision)),h('strong',null,t.purpose||'governed request')),h('div',{className:'trace-meta'},h('span',{className:'mono'},t.traceId.slice(0,13)),h('span',null,t.model))),h('div',{className:'trace-body'},h('div',{className:'trace-facts'},h('div',null,h('small',null,'Role'),h('strong',null,t.role)),h('div',null,h('small',null,'Patient'),h('strong',null,t.patientPseudonymousId||'—')),h('div',null,h('small',null,'Trusted sources'),h('strong',null,t.trustedSources?.length||0)),h('div',null,h('small',null,'Action'),h('strong',null,t.requestedClinicalAction?.status||'None'))),t.reasonCodes?.length?h('div',{className:'reason-strip'},...t.reasonCodes.map(x=>h(Pill,{key:x,t:'danger'},x))):null,h(RawDetails,{value:t,label:'Full trace'})))):h(Panel,{className:'empty-traces'},h('p',null,'Run an executive scenario first.'))))}
 
-function App(){const [page,setPage]=useState('Executive Demo'),[seed,setSeed]=useState(null),[runtime,setRuntime]=useState(null),[health,setHealth]=useState(null),[catalog,setCatalog]=useState(null);const refresh=()=>{api('/api/gateway-status').then(setRuntime).catch(()=>{});api('/api/health').then(setHealth).catch(()=>{});api('/api/demo/catalog').then(setCatalog).catch(()=>{})};useEffect(()=>{refresh();const t=setInterval(refresh,5000);return()=>clearInterval(t)},[]);function navigate(next,payload=null){setSeed(payload);setPage(next);window.scrollTo({top:0,behavior:'smooth'})}const content=useMemo(()=>{if(page==='Executive Demo')return h(ExecutiveDemo,{catalog,runtime,health,onNavigate:navigate});if(page==='Clinician AI')return h(AIWorkspace,{catalog,seed,onSeedConsumed:()=>setSeed(null)});if(page==='Patient AI')return h(AIWorkspace,{patient:true,catalog,seed,onSeedConsumed:()=>setSeed(null)});if(page==='24 Policies')return h(Policies,{catalog,onNavigate:navigate});if(page==='Guardrails')return h(Guardrails,{seed,onSeedConsumed:()=>setSeed(null)});if(page==='Role Differences')return h(RoleDifferences);if(page==='Tenant Isolation')return h(TenantIsolation,{catalog});return h(Evidence,{runtime})},[page,seed,runtime,health,catalog]);return h('div',{className:'app-shell'},h('aside',{className:'sidebar'},h('button',{className:'brand',onClick:()=>navigate('Executive Demo')},h('span',{className:'brand-mark'},'H'),h('span',null,h('strong',null,'HELIOS'),h('small',null,'Governed Clinical AI'))),h('div',{className:'nav-caption'},'VP-DRIVEN DEMO'),h('nav',null,PAGES.map((p,i)=>h('button',{key:p,className:page===p?'active':'',onClick:()=>navigate(p)},h('span',{className:'nav-num'},String(i+1).padStart(2,'0')),h('span',null,p)))),h('div',{className:'side-trust'},h(Icon,{name:'shield'}),h('div',null,h('strong',null,health?.gateway?.endToEnd?'Governed path live':'Checking runtime'),h('small',null,'WSO2 AI Gateway · synthetic patient data')))),h('main',{className:'main'},h('header',{className:'topbar'},h('div',null,h('span',{className:'topbar-label'},'HELIOS / WSO2 AI GATEWAY'),h('strong',null,page)),h(LiveStatus,{runtime,health})),h('div',{className:'page'},content),h('footer',null,'Synthetic healthcare demonstration only · Not medical advice · No autonomous diagnosis, prescribing or order execution')))}
+function App(){const [page,setPage]=useState('Executive Demo'),[seed,setSeed]=useState(null),[runtime,setRuntime]=useState(null),[health,setHealth]=useState(null),[catalog,setCatalog]=useState(null);const refresh=()=>{api('/api/gateway-status').then(setRuntime).catch(()=>{});api('/api/health').then(setHealth).catch(()=>{});api('/api/demo/catalog').then(setCatalog).catch(()=>{})};useEffect(()=>{refresh();const t=setInterval(refresh,5000);return()=>clearInterval(t)},[]);function navigate(next,payload=null){setSeed(payload);setPage(next);window.scrollTo({top:0,behavior:'smooth'})}const content=useMemo(()=>{if(page==='Executive Demo')return h(ExecutiveDemo,{catalog,runtime,health,onNavigate:navigate});if(page==='Clinician AI')return h(AIWorkspace,{catalog,seed,onSeedConsumed:()=>setSeed(null)});if(page==='Patient AI')return h(AIWorkspace,{patient:true,catalog,seed,onSeedConsumed:()=>setSeed(null)});if(page==='24 Policies')return h(Policies,{catalog,onNavigate:navigate});if(page==='Guardrails')return h(Guardrails,{seed,onSeedConsumed:()=>setSeed(null)});if(page==='Knowledge Lifecycle')return h(KnowledgeLifecycle);if(page==='Role Differences')return h(RoleDifferences);if(page==='Tenant Isolation')return h(TenantIsolation,{catalog});return h(Evidence,{runtime})},[page,seed,runtime,health,catalog]);return h('div',{className:'app-shell'},h('aside',{className:'sidebar'},h('button',{className:'brand',onClick:()=>navigate('Executive Demo')},h('span',{className:'brand-mark'},'H'),h('span',null,h('strong',null,'HELIOS'),h('small',null,'Governed Clinical AI'))),h('div',{className:'nav-caption'},'VP-DRIVEN DEMO'),h('nav',null,PAGES.map((p,i)=>h('button',{key:p,className:page===p?'active':'',onClick:()=>navigate(p)},h('span',{className:'nav-num'},String(i+1).padStart(2,'0')),h('span',null,p)))),h('div',{className:'side-trust'},h(Icon,{name:'shield'}),h('div',null,h('strong',null,health?.gateway?.endToEnd?'Governed path live':'Checking runtime'),h('small',null,'WSO2 AI Gateway · synthetic patient data')))),h('main',{className:'main'},h('header',{className:'topbar'},h('div',null,h('span',{className:'topbar-label'},'HELIOS / WSO2 AI GATEWAY'),h('strong',null,page)),h(LiveStatus,{runtime,health})),h('div',{className:'page'},content),h('footer',null,'Synthetic healthcare demonstration only · Not medical advice · No autonomous diagnosis, prescribing or order execution')))}
 createRoot(document.getElementById('root')).render(h(App));

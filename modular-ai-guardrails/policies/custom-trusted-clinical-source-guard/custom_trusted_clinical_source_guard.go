@@ -89,6 +89,198 @@ func userMessagesText(v map[string]interface{}) string {
 	}
 	return b.String()
 }
+func allMessagesText(v map[string]interface{}) string {
+	raw, ok := v["messages"].([]interface{})
+	if !ok {
+		return ""
+	}
+	var b strings.Builder
+	for _, m := range raw {
+		mm, ok := m.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		switch x := mm["content"].(type) {
+		case string:
+			b.WriteString(x)
+			b.WriteByte('\n')
+		default:
+			if encoded, err := json.Marshal(x); err == nil {
+				b.Write(encoded)
+				b.WriteByte('\n')
+			}
+		}
+	}
+	return b.String()
+}
+
+func verifyKnowledgeProof(proof string) (map[string]string, string, string, map[string]interface{}, bool) {
+	key := os.Getenv("HELIOS_CONTEXT_SIGNING_KEY")
+	if key == "" {
+		return nil,
+			"CLINICAL_KNOWLEDGE_PROVENANCE_REQUIRED",
+			"Gateway knowledge provenance verification key is unavailable.",
+			nil,
+			false
+	}
+
+	parts := strings.Split(proof, ".")
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return nil,
+			"CLINICAL_KNOWLEDGE_PROVENANCE_REQUIRED",
+			"Clinical knowledge provenance proof is malformed.",
+			nil,
+			false
+	}
+
+	decoded, err := base64.RawURLEncoding.DecodeString(parts[0])
+	if err != nil {
+		return nil,
+			"CLINICAL_KNOWLEDGE_PROVENANCE_REQUIRED",
+			"Clinical knowledge provenance proof cannot be decoded.",
+			nil,
+			false
+	}
+
+	payload := string(decoded)
+	fields := strings.Split(payload, "|")
+	if len(fields) != 7 {
+		return nil,
+			"CLINICAL_KNOWLEDGE_PROVENANCE_REQUIRED",
+			"Clinical knowledge provenance proof has an invalid payload.",
+			nil,
+			false
+	}
+
+	mac := hmac.New(sha256.New, []byte(key))
+	mac.Write(decoded)
+	expected := hex.EncodeToString(mac.Sum(nil))
+	if !hmac.Equal([]byte(strings.ToLower(parts[1])), []byte(strings.ToLower(expected))) {
+		return nil,
+			"CLINICAL_KNOWLEDGE_PROVENANCE_REQUIRED",
+			"Clinical knowledge provenance HMAC verification failed.",
+			map[string]interface{}{"sourceId": fields[0]},
+			false
+	}
+
+	return map[string]string{
+		"sourceId":             fields[0],
+		"sha256":               fields[1],
+		"publisher":            fields[2],
+		"version":              fields[3],
+		"lifecycleState":       strings.ToUpper(strings.TrimSpace(fields[4])),
+		"trustClassification":  strings.ToUpper(strings.TrimSpace(fields[5])),
+		"eligibleForRetrieval": strings.ToLower(strings.TrimSpace(fields[6])),
+	}, "", "", nil, true
+}
+
+func knowledgeLifecycleFindingFromText(text string) (string, string, map[string]interface{}, bool) {
+	evidenceRe := regexp.MustCompile(`(?i)"evidenceType"\s*:\s*"CLINICAL KNOWLEDGE SOURCE"`)
+	sourceIDRe := regexp.MustCompile(`(?i)"sourceId"\s*:\s*"[^"]+"`)
+	stateRe := regexp.MustCompile(`(?i)"lifecycleState"\s*:\s*"([^"]+)"`)
+	trustRe := regexp.MustCompile(`(?i)"trustClassification"\s*:\s*"([^"]+)"`)
+	eligibleRe := regexp.MustCompile(`(?i)"eligibleForRetrieval"\s*:\s*(true|false)`)
+	signatureRe := regexp.MustCompile(`(?i)"signatureState"\s*:\s*"([^"]+)"`)
+	proofRe := regexp.MustCompile(`(?i)"knowledgeProof"\s*:\s*"([^"]+)"`)
+
+	hasEvidence := evidenceRe.MatchString(text)
+	hasSource := sourceIDRe.MatchString(text)
+
+	states := stateRe.FindAllStringSubmatch(text, -1)
+	trusts := trustRe.FindAllStringSubmatch(text, -1)
+	eligibles := eligibleRe.FindAllStringSubmatch(text, -1)
+	signatures := signatureRe.FindAllStringSubmatch(text, -1)
+	proofs := proofRe.FindAllStringSubmatch(text, -1)
+
+	// An empty search result may legitimately carry the evidence type without
+	// any source entries. Once a source exists, governance metadata plus a
+	// cryptographically verifiable knowledge proof are mandatory.
+	if !hasEvidence && len(states) == 0 && len(trusts) == 0 && len(eligibles) == 0 && len(proofs) == 0 {
+		return "", "", nil, false
+	}
+
+	if hasEvidence && hasSource &&
+		(len(states) == 0 || len(trusts) == 0 || len(eligibles) == 0 || len(signatures) == 0 || len(proofs) == 0) {
+		return "CLINICAL_KNOWLEDGE_PROVENANCE_REQUIRED",
+			"Clinical knowledge evidence must carry lifecycle, trust, eligibility, content-signature state and a Gateway-verifiable provenance proof.",
+			map[string]interface{}{"sourceMetadataComplete": false},
+			true
+	}
+
+	for _, m := range proofs {
+		fields, code, reason, details, valid := verifyKnowledgeProof(m[1])
+		if !valid {
+			return code, reason, details, true
+		}
+		if fields["trustClassification"] != "TRUSTED_GOVERNED" {
+			return "CLINICAL_KNOWLEDGE_NOT_TRUSTED",
+				"Signed clinical knowledge provenance is not classified as trusted governed knowledge.",
+				map[string]interface{}{"sourceId": fields["sourceId"], "trustClassification": fields["trustClassification"]},
+				true
+		}
+		if fields["lifecycleState"] != "ACTIVE" {
+			return "CLINICAL_KNOWLEDGE_NOT_ACTIVE",
+				"Signed clinical knowledge provenance is stale, superseded, evidence-only, or quarantined.",
+				map[string]interface{}{"sourceId": fields["sourceId"], "lifecycleState": fields["lifecycleState"]},
+				true
+		}
+		if fields["eligibleForRetrieval"] != "true" {
+			return "CLINICAL_KNOWLEDGE_NOT_ACTIVE",
+				"Signed clinical knowledge provenance marks the source ineligible for model retrieval.",
+				map[string]interface{}{"sourceId": fields["sourceId"], "eligibleForRetrieval": fields["eligibleForRetrieval"]},
+				true
+		}
+	}
+
+	// Visible metadata must agree with the signed governance decision. This
+	// prevents callers from pairing a valid active proof with stale/untrusted
+	// lifecycle labels in the same request.
+	for _, m := range trusts {
+		trust := strings.ToUpper(strings.TrimSpace(m[1]))
+		if trust != "TRUSTED_GOVERNED" {
+			return "CLINICAL_KNOWLEDGE_NOT_TRUSTED",
+				"Clinical knowledge evidence is not classified as trusted governed knowledge.",
+				map[string]interface{}{"trustClassification": trust},
+				true
+		}
+	}
+
+	for _, m := range states {
+		state := strings.ToUpper(strings.TrimSpace(m[1]))
+		if state != "ACTIVE" {
+			return "CLINICAL_KNOWLEDGE_NOT_ACTIVE",
+				"Clinical knowledge evidence is stale, superseded, evidence-only, or quarantined.",
+				map[string]interface{}{"lifecycleState": state},
+				true
+		}
+	}
+
+	for _, m := range eligibles {
+		eligible := strings.ToLower(m[1])
+		if eligible == "false" {
+			return "CLINICAL_KNOWLEDGE_NOT_ACTIVE",
+				"Clinical knowledge evidence is not eligible for model retrieval.",
+				map[string]interface{}{"eligibleForRetrieval": eligible},
+				true
+		}
+	}
+
+	for _, m := range signatures {
+		signature := strings.ToLower(strings.TrimSpace(m[1]))
+		if signature != "valid-demo-hmac" {
+			return "CLINICAL_KNOWLEDGE_PROVENANCE_REQUIRED",
+				"Clinical knowledge evidence does not carry valid source-content provenance.",
+				map[string]interface{}{"signatureState": signature},
+				true
+		}
+	}
+
+	return "", "", map[string]interface{}{
+		"sourceMetadataComplete": true,
+		"gatewayProofVerified":   len(proofs) > 0,
+	}, false
+}
+
 func canonicalize(s string) string {
 	out := html.UnescapeString(strings.TrimSpace(s))
 	if d, err := url.QueryUnescape(out); err == nil {
@@ -200,6 +392,11 @@ func (p *Policy) OnRequestBody(_ context.Context, req *policy.RequestContext, _ 
 	text := userMessagesText(v)
 	if containsAny(text, `(?i)\b(?:invent|fabricate|make\s+up)\b.{0,80}\b(?:lab|allergy|diagnosis|medication|vital|test\s+result)\b`, `(?i)\bsay\s+the\s+(?:potassium|lab|allergy)\s+(?:was|is)\b`) {
 		setFinding(req, "TRUSTED_CLINICAL_SOURCE_REQUIRED", "Authoritative patient facts must come from trusted server-side clinical resources.", nil)
+		return nil
+	}
+
+	if code, reason, details, blocked := knowledgeLifecycleFindingFromText(allMessagesText(v)); blocked {
+		setFinding(req, code, reason, details)
 	}
 	return nil
 }
