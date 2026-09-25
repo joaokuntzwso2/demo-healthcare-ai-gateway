@@ -12,6 +12,7 @@ import { schedulingPurposePreflight, recordPurposeDecision } from './purpose-of-
 import { RESTRICTED_PURPOSE, RESTRICTED_TOOL, restrictedClinicalRequestMatches, restrictedClinicalPreflight } from './restricted-clinical-information.mjs';
 
 import { roleSystemInstruction, professionalRolePolicyForContext } from './professional-role-policy.mjs';
+import { recordCopilotInteraction } from './observability.mjs';
 const safeJson=x=>JSON.stringify(x,null,2);
 const INTERNAL_ID_VALUE=/^(?:pat|portal|hosp|cardio|clin|nurse|care|neph|endo|pharm|er|bh)-\d+$/i;
 const INTERNAL_PSEUDONYM_VALUE=/^(?:HN-P-[A-Z0-9-]+|FHIR-[A-Z0-9-]+)$/i;
@@ -290,7 +291,7 @@ async function runGatewayAgent({context,query,trace}){
   return {decision:'ABSTAIN',traceId:trace.traceId,answer:'The bounded agent reached its maximum tool-turn budget.',agent:{toolExecutions},evidence,reasonCodes:['RESOURCE_BUDGET_EXCEEDED']};
 }
 
-export async function runCopilot({app='clinician',query='',actorId,patientId,encounterId,purpose}={}){
+async function runCopilotCore({app='clinician',query='',actorId,patientId,encounterId,purpose}={}){
  let context=app==='patient-support'?resolvePatientSupportContext({userId:actorId||'portal-1001',patientId,purpose:purpose||'patient-support'}):resolveClinicianContext({actorId:actorId||'clin-001',patientId:patientId||'pat-1001',encounterId:encounterId===undefined?'enc-501':encounterId,purpose:purpose||inferPurpose(query,'clinician')});
  const trace=newTrace(context); const requestAssessment=inspectRequest({prompt:query,context}); if(!requestAssessment.allow){finalizeTrace(trace,{finalDecision:'BLOCKED',reasonCodes:requestAssessment.reasonCodes});return {decision:'BLOCKED',reasonCodes:requestAssessment.reasonCodes,traceId:trace.traceId,requestAssessment};}
 
@@ -430,4 +431,16 @@ export async function runCopilot({app='clinician',query='',actorId,patientId,enc
   if(intent==='callback'){const r=executeTool(context,'request_callback');finalizeTrace(trace,{finalDecision:'QUEUED_DEMO'});return {decision:'QUEUED_DEMO',traceId:trace.traceId,answer:'A synthetic callback request was queued. No clinical advice was generated.',evidence:[r],reasonCodes:[]};}
   const r=executeTool(context,'search_patient_education',{query});finalizeTrace(trace,{finalDecision:'ALLOWED',trustedSources:r.sources.map(x=>x.sourceId)});return {decision:'ALLOWED',traceId:trace.traceId,answer:r.sources.length?'Approved patient-education sources were found.':'No approved patient-education source matched this request.',evidence:r.sources,reasonCodes:[]};
  }catch(err){const code=err.code||'DEMO_CONTROL_DENIED';finalizeTrace(trace,{finalDecision:'BLOCKED',reasonCodes:[code]});return {decision:'BLOCKED',traceId:trace.traceId,reasonCodes:[code],error:err.message};}
+}
+
+export async function runCopilot(args={}){
+  const started=performance.now();
+  try{
+    const result=await runCopilotCore(args);
+    recordCopilotInteraction({args,result,durationMs:performance.now()-started});
+    return result;
+  }catch(error){
+    recordCopilotInteraction({args,error,durationMs:performance.now()-started});
+    throw error;
+  }
 }

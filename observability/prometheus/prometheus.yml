@@ -1,0 +1,24 @@
+global:
+  scrape_interval: 2s
+  evaluation_interval: 2s
+
+scrape_configs:
+  - job_name: helios-bff
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['host.docker.internal:5173']
+
+  - job_name: wso2-controller
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['host.docker.internal:9011']
+
+  - job_name: wso2-policy-engine
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['host.docker.internal:9003']
+
+  - job_name: wso2-router
+    metrics_path: /stats/prometheus
+    static_configs:
+      - targets: ['host.docker.internal:9901']

@@ -1,3 +1,4 @@
+import { recordModelCall } from './observability.mjs';
 import https from 'node:https';
 import crypto from 'node:crypto';
 
@@ -76,7 +77,7 @@ function signedHeliosContextHeaders(context){
   return {'X-Helios-Clinical-Context':encoded,'X-Helios-Clinical-Signature':signature};
 }
 
-export async function invokeModel({context,messages,model=DEFAULT_MODEL(),maxTokens=700,tools,toolChoice,temperature=0}){
+async function invokeModelCore({context,messages,model=DEFAULT_MODEL(),maxTokens=700,tools,toolChoice,temperature=0}){
   if(MODE()==='deterministic') return {
     mode:'deterministic',model:'helios-deterministic-renderer',status:200,
     content:'DETERMINISTIC_DEMO_RENDERER',message:{role:'assistant',content:'DETERMINISTIC_DEMO_RENDERER'},raw:null
@@ -96,4 +97,44 @@ export async function invokeModel({context,messages,model=DEFAULT_MODEL(),maxTok
   const message=resp.body?.choices?.[0]?.message||null;
   if(resp.status>=400) return {mode:'gateway',proxy,url,model,status:resp.status,error:resp.body,raw:resp.body,message:null,content:''};
   return {mode:'gateway',proxy,url,model,status:resp.status,message,content:message?.content??'',raw:resp.body};
+}
+
+function normalizeProviderUsage(raw={}){
+  const u=raw?.usage||{};
+  const input=Number(u.prompt_tokens??u.input_tokens??u.inputTokens??0);
+  const output=Number(u.completion_tokens??u.output_tokens??u.outputTokens??0);
+  const total=Number(u.total_tokens??u.totalTokens??input+output);
+  return {inputTokens:input,outputTokens:output,totalTokens:total};
+}
+
+export async function invokeModel(args={}){
+  const started=performance.now();
+  try{
+    const result=await invokeModelCore(args);
+    const latencyMs=performance.now()-started;
+    const usage=normalizeProviderUsage(result?.raw);
+    const enriched={...result,latencyMs,usage};
+    recordModelCall({
+      context:args.context,
+      proxy:result?.proxy||(args.context?.app==='patient-support'?'patient-support-ai-secure':'clinical-ai-secure'),
+      model:result?.model||args.model||'unknown',
+      status:result?.status||200,
+      latencyMs,
+      usage,
+      error:result?.error||null
+    });
+    return enriched;
+  }catch(error){
+    const latencyMs=performance.now()-started;
+    recordModelCall({
+      context:args.context,
+      proxy:args.context?.app==='patient-support'?'patient-support-ai-secure':'clinical-ai-secure',
+      model:args.model||'unknown',
+      status:599,
+      latencyMs,
+      usage:{},
+      error:{message:{reasonCode:error?.code||'MODEL_CALL_ERROR'}}
+    });
+    throw error;
+  }
 }

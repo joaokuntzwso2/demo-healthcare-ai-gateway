@@ -24,6 +24,7 @@ import { restrictedClinicalInformationSummary, restrictedClinicalAudit, setRestr
 import { tenantIsolationSummary, resolveTenantScopedPatient, tenantIsolationAudit, resetTenantIsolationAudit, runCrossTenantGatewayProbe } from './services/multi-tenant-isolation.mjs';
 import { roleBasedDifferencesSummary, evaluateRole, runSameQuestionForRole, runRoleGatewayProbe, roleBasedAudit, resetRoleBasedAudit } from './services/role-based-differences.mjs';
 import { clinicalKnowledgeLifecycleSummary, retrieveActiveClinicalGuideline, inspectKnowledgeLifecycleSource, resetClinicalKnowledgeLifecycle, runKnowledgeLifecycleGatewayProbe, clinicalKnowledgeLifecycleAudit } from './services/clinical-knowledge-lifecycle.mjs';
+import { executiveObservabilitySnapshot, observabilityEvents, prometheusMetrics, resetObservability } from './services/observability.mjs';
 const ROOT=resolve(fileURLToPath(new URL('../',import.meta.url)));
 const UI=resolve(ROOT,process.env.NODE_ENV==='production'?'dist':'public');
 const PORT=Number(process.env.PORT||5173);
@@ -52,6 +53,14 @@ const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=u
 
 const server=http.createServer(async(req,res)=>{try{
   const u=new URL(req.url,'http://localhost');
+  if(req.method==='GET'&&u.pathname==='/metrics'){
+    const data=prometheusMetrics();
+    res.writeHead(200,{'content-type':'text/plain; version=0.0.4; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'});
+    return res.end(data);
+  }
+  if(req.method==='GET'&&u.pathname==='/api/observability/executive')return json(res,200,executiveObservabilitySnapshot());
+  if(req.method==='GET'&&u.pathname==='/api/observability/events')return json(res,200,{events:observabilityEvents({limit:Number(u.searchParams.get('limit')||50)})});
+  if(req.method==='POST'&&u.pathname==='/api/observability/reset')return json(res,200,resetObservability());
   if(req.method==='GET'&&u.pathname==='/api/health')return json(res,200,{ok:true,product:'Helios Clinical AI Security',gateway:gatewayConfig()});
   if(req.method==='GET'&&u.pathname==='/api/gateway-status')return json(res,200,await gatewayRuntimeStatus());
   if(req.method==='GET'&&u.pathname==='/api/demo/catalog')return json(res,200,demoCatalog());
@@ -125,7 +134,7 @@ const server=http.createServer(async(req,res)=>{try{
       'content-type':mime[extname(path)]||'application/octet-stream',
       'cache-control':extname(path)==='.html'?'no-store':'public, max-age=300',
       'x-content-type-options':'nosniff',
-      'content-security-policy':"default-src 'self' https://esm.sh; script-src 'self' https://esm.sh; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'"
+      'content-security-policy':"default-src 'self' https://esm.sh; script-src 'self' https://esm.sh; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-src http://localhost:3000; frame-ancestors 'none'"
     });
     return res.end(data);
   }catch{return json(res,404,{error:'Not found'});}

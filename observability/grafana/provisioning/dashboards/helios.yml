@@ -1,0 +1,10 @@
+apiVersion: 1
+providers:
+  - name: Helios
+    orgId: 1
+    folder: Helios Clinical AI
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 5
+    options:
+      path: /var/lib/grafana/dashboards

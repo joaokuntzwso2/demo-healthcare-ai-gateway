@@ -192,12 +192,33 @@ func knowledgeLifecycleFindingFromText(text string) (string, string, map[string]
 	signatures := signatureRe.FindAllStringSubmatch(text, -1)
 	proofs := proofRe.FindAllStringSubmatch(text, -1)
 
-	// An empty search result may legitimately carry the evidence type without
-	// any source entries. Once a source exists, governance metadata plus a
-	// cryptographically verifiable knowledge proof are mandatory.
-	if !hasEvidence && len(states) == 0 && len(trusts) == 0 && len(eligibles) == 0 && len(proofs) == 0 {
+	// lifecycleState is not unique to knowledge governance. Ordinary clinical
+	// resources may legitimately contain values such as "active-care".
+	//
+	// Treat a payload as clinical knowledge only when it carries the explicit
+	// CLINICAL KNOWLEDGE SOURCE evidence marker, a signed knowledge proof, or
+	// the knowledge-specific trust + retrieval-eligibility metadata pair.
+	knowledgePayload := hasEvidence ||
+		len(proofs) > 0 ||
+		(len(trusts) > 0 && len(eligibles) > 0)
+
+	if !knowledgePayload {
 		return "", "", nil, false
 	}
+
+	// If something presents itself as governed knowledge through trust /
+	// eligibility metadata but carries neither the evidence marker nor a
+	// signed proof, fail closed instead of accepting unsigned governance.
+	if !hasEvidence && len(proofs) == 0 {
+		return "CLINICAL_KNOWLEDGE_PROVENANCE_REQUIRED",
+			"Clinical knowledge governance metadata requires an explicit knowledge evidence marker or Gateway-verifiable provenance proof.",
+			map[string]interface{}{"knowledgeEvidenceIdentified": true},
+			true
+	}
+
+	// An empty knowledge search result may legitimately carry the evidence type
+	// without any source entries. Once a source exists, governance metadata plus
+	// a cryptographically verifiable knowledge proof are mandatory.
 
 	if hasEvidence && hasSource &&
 		(len(states) == 0 || len(trusts) == 0 || len(eligibles) == 0 || len(signatures) == 0 || len(proofs) == 0) {
@@ -279,6 +300,93 @@ func knowledgeLifecycleFindingFromText(text string) (string, string, map[string]
 		"sourceMetadataComplete": true,
 		"gatewayProofVerified":   len(proofs) > 0,
 	}, false
+}
+
+func collectKnowledgeGovernanceObjects(value interface{}, out *[]map[string]interface{}) {
+	switch x := value.(type) {
+	case map[string]interface{}:
+		evidenceType, _ := x["evidenceType"].(string)
+		_, hasProof := x["knowledgeProof"]
+		_, hasTrust := x["trustClassification"]
+		_, hasEligibility := x["eligibleForRetrieval"]
+
+		// Scope this policy to actual knowledge-governance objects.
+		//
+		// Do not classify an object as clinical knowledge merely because it has
+		// a generic lifecycleState field. Encounter and workflow resources also
+		// use lifecycle state.
+		if strings.EqualFold(
+			strings.TrimSpace(evidenceType),
+			"CLINICAL KNOWLEDGE SOURCE",
+		) || hasProof || (hasTrust && hasEligibility) {
+			*out = append(*out, x)
+			return
+		}
+
+		for _, child := range x {
+			collectKnowledgeGovernanceObjects(child, out)
+		}
+
+	case []interface{}:
+		for _, child := range x {
+			collectKnowledgeGovernanceObjects(child, out)
+		}
+
+	case string:
+		// OpenAI-compatible tool messages often carry tool results as serialized
+		// JSON strings. Decode those strings so governance still applies to
+		// knowledge evidence returned by tools.
+		trimmed := strings.TrimSpace(x)
+		if len(trimmed) < 2 {
+			return
+		}
+		if trimmed[0] != '{' && trimmed[0] != '[' {
+			return
+		}
+
+		var decoded interface{}
+		if err := json.Unmarshal([]byte(trimmed), &decoded); err == nil {
+			collectKnowledgeGovernanceObjects(decoded, out)
+		}
+	}
+}
+
+func knowledgeLifecycleFindingFromRequest(v map[string]interface{}) (
+	string,
+	string,
+	map[string]interface{},
+	bool,
+) {
+	objects := []map[string]interface{}{}
+	collectKnowledgeGovernanceObjects(v, &objects)
+
+	for _, object := range objects {
+		payload, err := json.Marshal(object)
+		if err != nil {
+			continue
+		}
+
+		if code, reason, details, blocked :=
+			knowledgeLifecycleFindingFromText(string(payload)); blocked {
+			return code, reason, details, true
+		}
+	}
+
+	// OpenAI-compatible messages may embed a governed knowledge object inside
+	// human-readable tool/message content rather than carrying it as a
+	// standalone JSON object.
+	//
+	// knowledgeLifecycleFindingFromText is intentionally marker-scoped:
+	// generic lifecycle fields such as encounter lifecycleState="active-care"
+	// do NOT activate this policy. The fallback therefore restores enforcement
+	// for embedded knowledge evidence without reintroducing the clinical-data
+	// false positive.
+	if code, reason, details, blocked :=
+		knowledgeLifecycleFindingFromText(allMessagesText(v)); blocked {
+		return code, reason, details, true
+	}
+
+	return "", "", nil, false
 }
 
 func canonicalize(s string) string {
@@ -395,7 +503,7 @@ func (p *Policy) OnRequestBody(_ context.Context, req *policy.RequestContext, _ 
 		return nil
 	}
 
-	if code, reason, details, blocked := knowledgeLifecycleFindingFromText(allMessagesText(v)); blocked {
+	if code, reason, details, blocked := knowledgeLifecycleFindingFromRequest(v); blocked {
 		setFinding(req, code, reason, details)
 	}
 	return nil

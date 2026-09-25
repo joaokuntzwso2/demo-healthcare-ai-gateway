@@ -96,3 +96,85 @@ func TestInvalidSourceContentSignatureStateFailsClosed(t *testing.T) {
 		t.Fatalf("unsigned source content must fail closed, blocked=%v code=%q", blocked, code)
 	}
 }
+
+func TestKnowledgeLifecycleIgnoresOrdinaryClinicalLifecycleState(t *testing.T) {
+	text := `{
+		"evidenceType":"AUTHORITATIVE PATIENT FACT",
+		"source":"trusted-clinical-resources",
+		"encounters":[
+			{
+				"id":"enc-501",
+				"status":"in-progress",
+				"lifecycleState":"active-care"
+			}
+		]
+	}`
+
+	code, reason, details, blocked :=
+		knowledgeLifecycleFindingFromText(text)
+
+	if blocked {
+		t.Fatalf(
+			"ordinary clinical lifecycle metadata must not be treated as knowledge governance: code=%s reason=%s details=%v",
+			code,
+			reason,
+			details,
+		)
+	}
+}
+
+func TestKnowledgeLifecycleStillRecognizesExplicitKnowledgeEvidence(t *testing.T) {
+	text := `{
+		"evidenceType":"CLINICAL KNOWLEDGE SOURCE",
+		"sourceId":"src-stale-regression",
+		"lifecycleState":"STALE",
+		"trustClassification":"TRUSTED_GOVERNED",
+		"eligibleForRetrieval":false,
+		"signatureState":"valid-demo-hmac"
+	}`
+
+	code, _, _, blocked :=
+		knowledgeLifecycleFindingFromText(text)
+
+	if !blocked {
+		t.Fatal("explicit stale clinical knowledge must remain blocked")
+	}
+
+	if code != "CLINICAL_KNOWLEDGE_PROVENANCE_REQUIRED" &&
+		code != "CLINICAL_KNOWLEDGE_NOT_ACTIVE" {
+		t.Fatalf("unexpected reason code: %s", code)
+	}
+}
+
+func TestEmbeddedClinicalKnowledgeInMessageStillActivatesLifecyclePolicy(t *testing.T) {
+	request := map[string]interface{}{
+		"messages": []interface{}{
+			map[string]interface{}{
+				"role": "tool",
+				"content": `Retrieved clinical knowledge evidence:
+{
+  "evidenceType":"CLINICAL KNOWLEDGE SOURCE",
+  "sourceId":"src-stale-embedded",
+  "lifecycleState":"STALE",
+  "trustClassification":"TRUSTED_GOVERNED",
+  "eligibleForRetrieval":false,
+  "signatureState":"valid-demo-hmac"
+}`,
+			},
+		},
+	}
+
+	code, _, _, blocked := knowledgeLifecycleFindingFromRequest(request)
+
+	if !blocked {
+		t.Fatal("embedded clinical knowledge must activate lifecycle enforcement")
+	}
+
+	// This fixture intentionally omits a signed knowledgeProof. The important
+	// regression assertion is that embedded knowledge is discovered and fails
+	// closed rather than silently reaching the model.
+	if code != "CLINICAL_KNOWLEDGE_PROVENANCE_REQUIRED" &&
+		code != "CLINICAL_KNOWLEDGE_NOT_ACTIVE" {
+		t.Fatalf("unexpected reason code: %s", code)
+	}
+}
