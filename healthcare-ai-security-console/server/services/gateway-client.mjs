@@ -59,6 +59,8 @@ function signedHeliosContextHeaders(context){
     role:context.actor.role,
     patientId:context.patient.id,
     patientPseudonym:context.patient.pseudonym,
+    patientTenant:context.patient.tenant,
+    tenantBoundary:context.tenantBoundary?{actorTenant:context.tenantBoundary.actorTenant,patientTenant:context.tenantBoundary.patientTenant,requestedTenant:context.tenantBoundary.requestedTenant,sameTenant:context.tenantBoundary.sameTenant,policy:context.tenantBoundary.policy,version:context.tenantBoundary.version}:null,
     encounter:context.encounter,
     purpose:context.purpose,
     scopes:context.scopes,

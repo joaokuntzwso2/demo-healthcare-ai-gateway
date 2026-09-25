@@ -215,9 +215,34 @@ func intField(v map[string]interface{}, k string) int {
 	return 0
 }
 
+func tenantBoundaryFinding(c map[string]interface{}) (bool, string, string, map[string]interface{}) {
+	actorTenant := strings.TrimSpace(str(c, "tenant"))
+	patientTenant := strings.TrimSpace(str(c, "patientTenant"))
+	if actorTenant == "" || patientTenant == "" {
+		return false, "CLINICAL_DATA_NOT_AUTHORIZED", "Signed actor and patient tenant binding is required.", nil
+	}
+	binding, ok := c["tenantBoundary"].(map[string]interface{})
+	if !ok || binding == nil {
+		return false, "CLINICAL_DATA_NOT_AUTHORIZED", "Signed tenant-boundary metadata is required.", nil
+	}
+	ba, bp, br := strings.TrimSpace(str(binding, "actorTenant")), strings.TrimSpace(str(binding, "patientTenant")), strings.TrimSpace(str(binding, "requestedTenant"))
+	if ba == "" || bp == "" || br == "" {
+		return false, "CLINICAL_DATA_NOT_AUTHORIZED", "Signed tenant-boundary metadata is incomplete.", nil
+	}
+	if ba != actorTenant || bp != patientTenant {
+		return false, "CLINICAL_DATA_NOT_AUTHORIZED", "Signed tenant-boundary metadata is inconsistent with the clinical context.", map[string]interface{}{"actorTenant": actorTenant, "patientTenant": patientTenant}
+	}
+	expected := actorTenant == patientTenant && actorTenant == br
+	if boolParam(binding, "sameTenant", false) != expected {
+		return false, "CLINICAL_DATA_NOT_AUTHORIZED", "Signed tenant-boundary decision is internally inconsistent.", nil
+	}
+	if !expected {
+		return false, "TENANT_BOUNDARY_VIOLATION", "Clinical data access across healthcare-organization boundaries is denied.", map[string]interface{}{"actorTenant": actorTenant, "patientTenant": patientTenant, "requestedTenant": br}
+	}
+	return true, "", "", nil
+}
 func (p *Policy) OnRequestBody(_ context.Context, req *policy.RequestContext, _ map[string]interface{}) policy.RequestAction {
-	_, err := parseRequest(req)
-	if err != nil {
+	if _, err := parseRequest(req); err != nil {
 		setFinding(req, "INVALID_REQUEST_STRUCTURE", "Request must be valid JSON.", nil)
 		return nil
 	}
@@ -228,9 +253,14 @@ func (p *Policy) OnRequestBody(_ context.Context, req *policy.RequestContext, _ 
 	}
 	if !validContextSignature(req) {
 		setFinding(req, "CLINICAL_DATA_NOT_AUTHORIZED", "Clinical context signature is invalid or verification key is unavailable.", nil)
+		return nil
 	}
 	if p.expectedApp != "" && str(c, "app") != p.expectedApp {
 		setFinding(req, "CLINICAL_DATA_NOT_AUTHORIZED", "Signed application context does not match this App LLM Proxy.", map[string]interface{}{"expectedApp": p.expectedApp, "actualApp": str(c, "app")})
+		return nil
+	}
+	if ok, code, reason, details := tenantBoundaryFinding(c); !ok {
+		setFinding(req, code, reason, details)
 	}
 	return nil
 }

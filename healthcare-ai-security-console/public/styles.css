@@ -55,3 +55,6 @@
 .restricted-clinical-rule{display:flex;flex-direction:column;gap:3px;margin-top:12px;padding:10px 12px;border-left:3px solid #f14e23;background:#fafafa}
 @media(max-width:900px){.restricted-clinical-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){.restricted-clinical-grid{grid-template-columns:1fr}.restricted-clinical-head{flex-direction:column}}
+
+/* tenant-isolation */
+.tenant-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:16px 0}.tenant-audit-head{display:flex;align-items:center;justify-content:space-between;gap:12px}@media(max-width:900px){.tenant-grid{grid-template-columns:1fr}}

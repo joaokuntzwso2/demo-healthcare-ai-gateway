@@ -17,7 +17,14 @@ test('clinician context binds tenant/patient/encounter',()=>{
 });
 
 test('cross-tenant access is denied',()=>{
-  assert.throws(()=>resolveClinicianContext({actorId:'clin-001',patientId:'pat-br-2001',encounterId:null}),e=>e.code==='PATIENT_SCOPE_MISMATCH');
+  assert.throws(
+    ()=>resolveClinicianContext({
+      actorId:'clin-001',
+      patientId:'pat-br-2001',
+      encounterId:null
+    }),
+    e=>e.code==='TENANT_BOUNDARY_VIOLATION'
+  );
 });
 
 

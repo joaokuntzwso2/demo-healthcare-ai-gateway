@@ -40,6 +40,11 @@ export const careAssignments = {
   'pharm-br-001': ['pat-br-2001']
 };
 
+export const tenantScopedPatientIdentifiers=[
+  {tenant:'helios-north',system:'hospital-mrn',value:'MRN-04217',patientId:'pat-1004'},
+  {tenant:'aurora-br',system:'hospital-mrn',value:'MRN-04217',patientId:'pat-br-2001'}
+];
+
 export function isClinicianAssignedToPatient(actorId, patientId){
   return (careAssignments[actorId] || []).includes(patientId);
 }

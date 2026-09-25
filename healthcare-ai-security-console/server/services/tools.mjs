@@ -21,12 +21,16 @@ export function allowedTools(context){
   return restricted.active?tools:tools.filter(name=>name!==RESTRICTED_TOOL);
 }
 function withFhir(context,name,patient,result){const fhir=buildFhirEnvelope({context,name,patient,result});return fhir?{...result,fhir}:result;}
+function assertContextTenantBoundary(context){const a=context?.tenant,p=context?.patient?.tenant;if(!a||!p||a!==p)throw new AccessError('TENANT_BOUNDARY_VIOLATION','Signed actor and patient tenant context does not match.');}
+function assertToolTenantBoundary(context,patient){assertContextTenantBoundary(context);const a=context?.tenant,t=patient?.tenant;if(!t||a!==t)throw new AccessError('TENANT_BOUNDARY_VIOLATION','Authoritative patient data belongs to a different healthcare organization.');}
 export function executeTool(context,name,args={}){
  if(context.app==='clinician')assertToolAllowedForPurpose(context,name);
  if(context.app==='clinician'&&name===RESTRICTED_TOOL)assertRestrictedClinicalAccess(context);
  if(!allowedTools(context).includes(name)) throw new AccessError('CLINICAL_DATA_NOT_AUTHORIZED',`Tool ${name} is not available to ${context.app}.`);
  validateRequestedPatient(context,args.patientId);
+ assertContextTenantBoundary(context);
  const patient=patients[context.patient.id];
+ assertToolTenantBoundary(context,patient);
  let result;
  switch(name){
   case 'get_scheduling_context': result={evidenceType:'AUTHORITATIVE SCHEDULING FACT',...schedulingProjection(patient)}; break;

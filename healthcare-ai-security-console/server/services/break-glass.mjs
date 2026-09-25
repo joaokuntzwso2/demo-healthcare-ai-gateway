@@ -33,7 +33,7 @@ function patientOrFail(patientId){
 }
 
 function assertSameTenant(actor,patient){
-  if(actor.tenant!==patient.tenant)fail('CLINICAL_DATA_NOT_AUTHORIZED','Break-glass cannot cross tenant boundaries.',403);
+  if(actor.tenant!==patient.tenant)fail('TENANT_BOUNDARY_VIOLATION','Break-glass cannot cross tenant boundaries.',403);
 }
 
 function assertEmergencyEligible(actor){
