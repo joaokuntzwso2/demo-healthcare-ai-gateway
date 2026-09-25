@@ -22,6 +22,7 @@ import { purposeOfUseDemoSummary, purposeOfUseAudit, resetPurposeOfUseAudit } fr
 import { restrictedClinicalInformationSummary, restrictedClinicalAudit, setRestrictedAuthorizationState, resetRestrictedClinicalInformation } from './services/restricted-clinical-information.mjs';
 
 import { tenantIsolationSummary, resolveTenantScopedPatient, tenantIsolationAudit, resetTenantIsolationAudit, runCrossTenantGatewayProbe } from './services/multi-tenant-isolation.mjs';
+import { roleBasedDifferencesSummary, evaluateRole, runSameQuestionForRole, runRoleGatewayProbe, roleBasedAudit, resetRoleBasedAudit } from './services/role-based-differences.mjs';
 const ROOT=resolve(fileURLToPath(new URL('../',import.meta.url)));
 const UI=resolve(ROOT,process.env.NODE_ENV==='production'?'dist':'public');
 const PORT=Number(process.env.PORT||5173);
@@ -53,6 +54,20 @@ const server=http.createServer(async(req,res)=>{try{
   if(req.method==='GET'&&u.pathname==='/api/health')return json(res,200,{ok:true,product:'Helios Clinical AI Security',gateway:gatewayConfig()});
   if(req.method==='GET'&&u.pathname==='/api/gateway-status')return json(res,200,await gatewayRuntimeStatus());
   if(req.method==='GET'&&u.pathname==='/api/demo/catalog')return json(res,200,demoCatalog());
+  if(req.method==='GET'&&u.pathname==='/api/demo/role-based-differences')return json(res,200,roleBasedDifferencesSummary());
+  if(req.method==='GET'&&u.pathname==='/api/demo/role-based-differences/audit')return json(res,200,{events:roleBasedAudit({actorId:u.searchParams.get('actorId')||null,limit:50})});
+  if(req.method==='POST'&&u.pathname==='/api/demo/role-based-differences'){
+    const b=await jsonBody(req);
+    if(b.action==='reset')return json(res,200,resetRoleBasedAudit());
+    if(b.action==='evaluate')return json(res,200,evaluateRole(b.actorId));
+    if(b.action==='ask')return json(res,200,await runSameQuestionForRole(b.actorId));
+    return json(res,400,{error:'Unsupported role-differences action',code:'INVALID_ROLE_DIFFERENCES_ACTION'});
+  }
+  if(req.method==='POST'&&u.pathname==='/api/demo/role-based-differences/gateway-probe'){
+    const b=await jsonBody(req);
+    return json(res,200,await runRoleGatewayProbe(b.actorId));
+  }
+
   if(req.method==='GET'&&u.pathname==='/api/demo/tenant-isolation')return json(res,200,tenantIsolationSummary());
   if(req.method==='GET'&&u.pathname==='/api/demo/tenant-isolation/audit')return json(res,200,{events:tenantIsolationAudit({actorId:u.searchParams.get('actorId')||null,limit:50})});
   if(req.method==='POST'&&u.pathname==='/api/demo/tenant-isolation'){const b=await jsonBody(req);if(b.action==='reset')return json(res,200,resetTenantIsolationAudit());if(b.action==='resolve')return json(res,200,resolveTenantScopedPatient({actorId:b.actorId||'endo-001',targetTenant:b.targetTenant||'helios-north',system:b.system||'hospital-mrn',value:b.value||'MRN-04217'}));return json(res,400,{error:'Unsupported tenant-isolation action',code:'INVALID_TENANT_ISOLATION_ACTION'});}

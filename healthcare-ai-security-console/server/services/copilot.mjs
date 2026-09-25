@@ -11,6 +11,7 @@ import { gracefulAbstentionPreflight } from './clinical-context-completeness.mjs
 import { schedulingPurposePreflight, recordPurposeDecision } from './purpose-of-use.mjs';
 import { RESTRICTED_PURPOSE, RESTRICTED_TOOL, restrictedClinicalRequestMatches, restrictedClinicalPreflight } from './restricted-clinical-information.mjs';
 
+import { roleSystemInstruction, professionalRolePolicyForContext } from './professional-role-policy.mjs';
 const safeJson=x=>JSON.stringify(x,null,2);
 const INTERNAL_ID_VALUE=/^(?:pat|portal|hosp|cardio|clin|nurse|care|neph|endo|pharm|er|bh)-\d+$/i;
 const INTERNAL_PSEUDONYM_VALUE=/^(?:HN-P-[A-Z0-9-]+|FHIR-[A-Z0-9-]+)$/i;
@@ -223,9 +224,25 @@ If the user asks for clinical chart access, clinician tools, diagnosis, medicati
 async function runGatewayAgent({context,query,trace}){
   const allowedToolNames=new Set(allowedTools(context));
   const tools=schemasForApp(context.app).filter(tool=>allowedToolNames.has(tool?.function?.name));
-  const messages=[{role:'system',content:context.app==='clinician'?CLINICIAN_SYSTEM:PATIENT_SYSTEM},{role:'user',content:query}];
+  const requiredEvidenceCandidate=requiredEvidenceTool(query,context.app);
+  if(context.app==='clinician'&&requiredEvidenceCandidate&&!allowedToolNames.has(requiredEvidenceCandidate)){
+    const rolePolicy=professionalRolePolicyForContext(context,schemasForApp('clinician').map(x=>x?.function?.name).filter(Boolean));
+    finalizeTrace(trace,{finalDecision:'BLOCKED',reasonCodes:['PROFESSIONAL_ROLE_CAPABILITY_DENIED'],dataCategoriesReleased:[]});
+    return {
+      decision:'BLOCKED',
+      traceId:trace.traceId,
+      answer:`This request requires ${requiredEvidenceCandidate}, which is outside the permitted capabilities for the signed professional role.`,
+      reasonCodes:['PROFESSIONAL_ROLE_CAPABILITY_DENIED'],
+      authorization:{type:'PROFESSIONAL_ROLE',professionalRole:rolePolicy.family,policy:rolePolicy.policy,requiredCapability:requiredEvidenceCandidate,allowedTools:rolePolicy.allowedTools},
+      evidence:[],
+      agent:{modelTurns:0,toolExecutions:[]},
+      gateway:{invoked:false,reason:'Professional-role authorization denied the required evidence capability before model invocation.'}
+    };
+  }
+  const roleInstruction=context.app==='clinician'?roleSystemInstruction(context):'';
+  const messages=[{role:'system',content:context.app==='clinician'?`${CLINICIAN_SYSTEM}\n${roleInstruction}`:PATIENT_SYSTEM},{role:'user',content:query}];
   const evidence=[]; const toolExecutions=[]; let modelName=null;
-  const requiredEvidence=requiredEvidenceTool(query,context.app);
+  const requiredEvidence=requiredEvidenceCandidate;
   const maxToolRounds=3;
   for(let round=0;round<maxToolRounds;round++){
     const toolChoice=round===0&&requiredEvidence?{type:'function',function:{name:requiredEvidence}}:'auto';

@@ -29,3 +29,6 @@ function asOpenAITools(defs){return Object.entries(defs).map(([name,d])=>({type:
 export const clinicianToolSchemas=asOpenAITools(clinician);
 export const patientToolSchemas=asOpenAITools(patient);
 export function schemasForApp(app){return app==='patient-support'?patientToolSchemas:clinicianToolSchemas;}
+
+export function schemaForTool(name){return [...clinicianToolSchemas,...patientToolSchemas].find(x=>x?.function?.name===name)||null;}
+export function schemasForToolNames(names=[]){const wanted=new Set(names);return [...clinicianToolSchemas,...patientToolSchemas].filter(x=>wanted.has(x?.function?.name));}

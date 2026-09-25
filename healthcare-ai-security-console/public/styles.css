@@ -58,3 +58,15 @@
 
 /* tenant-isolation */
 .tenant-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:16px 0}.tenant-audit-head{display:flex;align-items:center;justify-content:space-between;gap:12px}@media(max-width:900px){.tenant-grid{grid-template-columns:1fr}}
+
+
+/* role-based-differences */
+.role-question-card{margin:16px 0 18px}.role-invariant-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.role-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.role-card{min-width:0}
+.role-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.role-card-head h3{margin:.2rem 0}
+.role-cap-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 12px;margin:15px 0}
+.role-cap-grid>div{display:flex;justify-content:space-between;gap:10px;padding:7px 9px;border-radius:8px;background:var(--surface-2,#f5f6f8)}
+.role-cap-grid span{font-size:.82rem}.cap-yes{font-weight:800}.cap-no{opacity:.45}
+.role-authority{display:flex;flex-direction:column;gap:4px;padding:10px;border-radius:8px;background:var(--surface-2,#f5f6f8)}
+.role-buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}.role-live-result{margin-top:14px;padding-top:12px;border-top:1px solid var(--border,#ddd)}
+.role-principle{margin-top:18px}@media(max-width:900px){.role-grid{grid-template-columns:1fr}}

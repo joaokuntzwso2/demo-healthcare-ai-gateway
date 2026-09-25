@@ -7,6 +7,7 @@ import { requestMedicationOrder, requestTestOrder, submitClinicianApproval } fro
 import { buildFhirEnvelope } from './fhir-adapter.mjs';
 import { encounterWithLifecycle } from './encounter-lifecycle.mjs';
 import { assertToolAllowedForPurpose, allowedClinicianToolsForPurpose, schedulingProjection } from './purpose-of-use.mjs';
+import { roleAllowedTools, assertProfessionalToolAllowed } from './professional-role-policy.mjs';
 import { medicationEvidenceForPatient } from './clinical-evidence-conflict.mjs';
 import { applyCurrentLabProjection } from './lab-result-lineage.mjs';
 import { RESTRICTED_TOOL, assertRestrictedClinicalAccess, readRestrictedClinicalInformation, restrictedAuthorizationProjection } from './restricted-clinical-information.mjs';
@@ -14,17 +15,24 @@ import { RESTRICTED_TOOL, assertRestrictedClinicalAccess, readRestrictedClinical
 export const clinicianTools=['get_patient_summary','get_encounter','get_recent_labs','get_medications','get_allergies','get_conditions','search_clinical_knowledge','check_medication_safety','draft_clinical_note','request_medication_order','request_test_order','submit_for_clinician_approval','get_scheduling_context',RESTRICTED_TOOL];
 export const patientTools=['get_own_appointment','get_own_approved_instructions','search_patient_education','request_callback'];
 const requireScope=(ctx,s)=>{if(!ctx.scopes.includes(s))throw new AccessError('CLINICAL_DATA_NOT_AUTHORIZED',`Scope ${s} required.`)};
-export function allowedTools(context){
+function baseAllowedTools(context){
   if(context.app!=='clinician')return [...patientTools];
   const tools=allowedClinicianToolsForPurpose(context,clinicianTools);
   const restricted=restrictedAuthorizationProjection({actorId:context.actor?.id,patientId:context.patient?.id,purpose:context.purpose,scopes:context.scopes});
   return restricted.active?tools:tools.filter(name=>name!==RESTRICTED_TOOL);
 }
+
+export function allowedTools(context){
+  const base=baseAllowedTools(context);
+  if(context?.app!=='clinician')return base;
+  return roleAllowedTools(context,base);
+}
+
 function withFhir(context,name,patient,result){const fhir=buildFhirEnvelope({context,name,patient,result});return fhir?{...result,fhir}:result;}
 function assertContextTenantBoundary(context){const a=context?.tenant,p=context?.patient?.tenant;if(!a||!p||a!==p)throw new AccessError('TENANT_BOUNDARY_VIOLATION','Signed actor and patient tenant context does not match.');}
 function assertToolTenantBoundary(context,patient){assertContextTenantBoundary(context);const a=context?.tenant,t=patient?.tenant;if(!t||a!==t)throw new AccessError('TENANT_BOUNDARY_VIOLATION','Authoritative patient data belongs to a different healthcare organization.');}
 export function executeTool(context,name,args={}){
- if(context.app==='clinician')assertToolAllowedForPurpose(context,name);
+ if(context.app==='clinician'){assertToolAllowedForPurpose(context,name);assertProfessionalToolAllowed(context,name,clinicianTools);}
  if(context.app==='clinician'&&name===RESTRICTED_TOOL)assertRestrictedClinicalAccess(context);
  if(!allowedTools(context).includes(name)) throw new AccessError('CLINICAL_DATA_NOT_AUTHORIZED',`Tool ${name} is not available to ${context.app}.`);
  validateRequestedPatient(context,args.patientId);

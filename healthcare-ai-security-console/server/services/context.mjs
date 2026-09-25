@@ -6,6 +6,7 @@ import { activeBreakGlassGrant, recordBreakGlassUse } from './break-glass.mjs';
 import { restrictedAuthorizationProjection } from './restricted-clinical-information.mjs';
 
 import { tenantBoundaryDecision, recordTenantBoundaryAudit } from './multi-tenant-isolation.mjs';
+import { professionalRoleContext } from './professional-role-policy.mjs';
 const HMAC_KEY = process.env.HELIOS_PSEUDONYM_KEY || 'helios-demo-only-pseudonym-key';
 export function pseudonymize(value){ return 'PX-' + crypto.createHmac('sha256', HMAC_KEY).update(String(value)).digest('hex').slice(0,12).toUpperCase(); }
 export class AccessError extends Error { constructor(code, message, status=403){ super(message); this.code=code; this.status=status; } }
@@ -55,7 +56,7 @@ export function resolveClinicianContext({ actorId='clin-001', patientId='pat-100
   }
   const scopes = requestedScopes.length ? requestedScopes.filter(s => actor.scopes.includes(s)) : [...actor.scopes];
   const restrictedAuthorization=restrictedAuthorizationProjection({actorId:actor.id,patientId:patient.id,purpose,scopes});
-  return { tenant:actor.tenant, actor:{id:actor.id,display:actor.display,role:actor.role}, patient:{id:patient.id,pseudonym:patient.pseudonym,tenant:patient.tenant}, tenantBoundary:{actorTenant:actor.tenant,patientTenant:patient.tenant,requestedTenant:patient.tenant,sameTenant:true,policy:'STRICT_TENANT_ISOLATION',version:'tenant-boundary-v1'}, encounter:encounter?.id || null, encounterAccess, careRelationship:effectiveRelationship.context||null, breakGlass:emergencyGrant?{active:true,mode:'break-glass',grantId:emergencyGrant.grantId,reason:emergencyGrant.reason,stepUpMethod:emergencyGrant.stepUpMethod,grantedAt:emergencyGrant.grantedAt,expiresAt:emergencyGrant.expiresAt,severity:'HIGH'}:null, restrictedAuthorization, purpose, scopes, app:'clinician', patientAssignment:{assigned:true,source:effectiveRelationship.source,assignedPatientIds:[...effectiveRelationship.assignedPatientIds],careRelationship:effectiveRelationship.context||null}, permittedDataCategories:[] };
+  return { tenant:actor.tenant, actor:{id:actor.id,display:actor.display,role:actor.role}, professionalRole:professionalRoleContext(actor), patient:{id:patient.id,pseudonym:patient.pseudonym,tenant:patient.tenant}, tenantBoundary:{actorTenant:actor.tenant,patientTenant:patient.tenant,requestedTenant:patient.tenant,sameTenant:true,policy:'STRICT_TENANT_ISOLATION',version:'tenant-boundary-v1'}, encounter:encounter?.id || null, encounterAccess, careRelationship:effectiveRelationship.context||null, breakGlass:emergencyGrant?{active:true,mode:'break-glass',grantId:emergencyGrant.grantId,reason:emergencyGrant.reason,stepUpMethod:emergencyGrant.stepUpMethod,grantedAt:emergencyGrant.grantedAt,expiresAt:emergencyGrant.expiresAt,severity:'HIGH'}:null, restrictedAuthorization, purpose, scopes, app:'clinician', patientAssignment:{assigned:true,source:effectiveRelationship.source,assignedPatientIds:[...effectiveRelationship.assignedPatientIds],careRelationship:effectiveRelationship.context||null}, permittedDataCategories:[] };
 }
 
 export function resolvePatientSupportContext({ userId='portal-1001', patientId, purpose='patient-support' }={}){

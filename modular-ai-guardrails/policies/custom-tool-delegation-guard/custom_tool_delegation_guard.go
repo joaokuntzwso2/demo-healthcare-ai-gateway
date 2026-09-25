@@ -214,6 +214,123 @@ func intField(v map[string]interface{}, k string) int {
 	return 0
 }
 
+func professionalRoleFamily(role string) string {
+	r := strings.ToLower(strings.TrimSpace(role))
+	if strings.Contains(r, "behavioral-health") {
+		if strings.Contains(r, "physician") {
+			return "physician"
+		}
+		return "behavioral-health"
+	}
+	if r == "hospitalist" || strings.Contains(r, "physician") {
+		return "physician"
+	}
+	if strings.Contains(r, "pharmacist") {
+		return "pharmacist"
+	}
+	if strings.Contains(r, "nurse") && !strings.Contains(r, "care-manager") {
+		return "nurse"
+	}
+	if r == "care-manager" || strings.Contains(r, "care manager") {
+		return "care-manager"
+	}
+	return "unrecognized"
+}
+
+func requiredProfessionalScope(tool string) string {
+	switch tool {
+	case "get_patient_summary", "get_encounter":
+		return "chart:summary"
+	case "get_recent_labs":
+		return "labs:read"
+	case "get_medications":
+		return "medications:read"
+	case "get_allergies":
+		return "allergies:read"
+	case "get_conditions":
+		return "conditions:read"
+	case "search_clinical_knowledge":
+		return "knowledge:read"
+	case "check_medication_safety":
+		return "medication-safety:read"
+	case "draft_clinical_note":
+		return "note:draft"
+	case "request_medication_order", "request_test_order":
+		return "clinical-action:request"
+	case "submit_for_clinician_approval":
+		return "approval:submit"
+	case "get_restricted_clinical_information":
+		return "restricted:behavioral-health:read"
+	default:
+		return ""
+	}
+}
+
+func knownClinicianTool(tool string) bool {
+	switch tool {
+	case "get_patient_summary", "get_encounter", "get_recent_labs", "get_medications",
+		"get_allergies", "get_conditions", "search_clinical_knowledge",
+		"check_medication_safety", "draft_clinical_note", "request_medication_order",
+		"request_test_order", "submit_for_clinician_approval", "get_scheduling_context",
+		"get_restricted_clinical_information":
+		return true
+	default:
+		return false
+	}
+}
+
+func clinicianToolAllowedForRole(c map[string]interface{}, tool string) bool {
+	/*
+		Restricted clinical information has its own stronger authorization
+		policy earlier in the Gateway chain. The tool-delegation guard only
+		verifies that the explicit restricted scope is present; the
+		custom-sensitive-clinical-context-guard independently validates the
+		patient authorization, purpose and restricted-record entitlement.
+
+		This prevents the generic professional-role matrix from accidentally
+		overriding the dedicated restricted-record authorization model.
+	*/
+	if tool == "get_restricted_clinical_information" {
+		return hasScope(c, "restricted:behavioral-health:read")
+	}
+
+	family := professionalRoleFamily(str(c, "role"))
+	roleAllowed := false
+	switch family {
+	case "physician":
+		roleAllowed = knownClinicianTool(tool)
+	case "behavioral-health":
+		switch tool {
+		case "get_patient_summary", "get_encounter", "get_allergies",
+			"search_clinical_knowledge", "draft_clinical_note",
+			"get_restricted_clinical_information":
+			roleAllowed = true
+		}
+	case "pharmacist":
+		switch tool {
+		case "get_recent_labs", "get_medications", "get_allergies", "get_conditions", "search_clinical_knowledge", "check_medication_safety":
+			roleAllowed = true
+		}
+	case "nurse":
+		switch tool {
+		case "get_patient_summary", "get_encounter", "get_recent_labs", "get_allergies", "search_clinical_knowledge", "draft_clinical_note", "get_scheduling_context":
+			roleAllowed = true
+		}
+	case "care-manager":
+		switch tool {
+		case "get_patient_summary", "get_encounter", "search_clinical_knowledge", "draft_clinical_note", "get_scheduling_context":
+			roleAllowed = true
+		}
+	}
+	if !roleAllowed {
+		return false
+	}
+	if required := requiredProfessionalScope(tool); required != "" && !hasScope(c, required) {
+		return false
+	}
+	return true
+}
+
 func (p *Policy) OnRequestBody(_ context.Context, req *policy.RequestContext, _ map[string]interface{}) policy.RequestAction {
 	v, err := parseRequest(req)
 	if err != nil {
@@ -224,15 +341,32 @@ func (p *Policy) OnRequestBody(_ context.Context, req *policy.RequestContext, _ 
 	if c == nil {
 		return nil
 	}
-	allowedClin := map[string]bool{"get_patient_summary": true, "get_encounter": true, "get_recent_labs": true, "get_medications": true, "get_allergies": true, "get_conditions": true, "search_clinical_knowledge": true, "check_medication_safety": true, "draft_clinical_note": true, "request_medication_order": true, "request_test_order": true, "submit_for_clinician_approval": true, "get_restricted_clinical_information": true}
-	allowedPatient := map[string]bool{"get_own_appointment": true, "get_own_approved_instructions": true, "search_patient_education": true, "request_callback": true}
+	allowedPatient := map[string]bool{
+		"get_own_appointment":           true,
+		"get_own_approved_instructions": true,
+		"search_patient_education":      true,
+		"request_callback":              true,
+	}
 	for _, n := range toolNames(v) {
-		ok := allowedClin[n]
-		if str(c, "app") == "patient-support" {
-			ok = allowedPatient[n]
+		app := str(c, "app")
+		if app == "patient-support" {
+			if !allowedPatient[n] {
+				setFinding(req, "CLINICAL_DATA_NOT_AUTHORIZED", "Requested tool is not allowed for this application context.", map[string]interface{}{"tool": n})
+				break
+			}
+			continue
 		}
-		if !ok {
+		if app != "clinician" || !knownClinicianTool(n) {
 			setFinding(req, "CLINICAL_DATA_NOT_AUTHORIZED", "Requested tool is not allowed for this application context.", map[string]interface{}{"tool": n})
+			break
+		}
+		if !clinicianToolAllowedForRole(c, n) {
+			setFinding(req, "PROFESSIONAL_ROLE_CAPABILITY_DENIED", "Requested tool is outside the signed professional role and scope boundary.", map[string]interface{}{
+				"tool":             n,
+				"actorRole":        str(c, "role"),
+				"professionalRole": professionalRoleFamily(str(c, "role")),
+				"requiredScope":    requiredProfessionalScope(n),
+			})
 			break
 		}
 	}

@@ -214,6 +214,11 @@ func intField(v map[string]interface{}, k string) int {
 	return 0
 }
 
+func physicianProfessionalRole(role string) bool {
+	r := strings.ToLower(strings.TrimSpace(role))
+	return r == "hospitalist" || strings.Contains(r, "physician")
+}
+
 func (p *Policy) OnRequestBody(_ context.Context, req *policy.RequestContext, _ map[string]interface{}) policy.RequestAction {
 	v, err := parseRequest(req)
 	if err != nil {
@@ -226,8 +231,19 @@ func (p *Policy) OnRequestBody(_ context.Context, req *policy.RequestContext, _ 
 	}
 	text := strings.ToLower(messagesText(v))
 	action := containsAny(text, `\b(?:place|execute|submit|create)\b.{0,30}\b(?:medication|test|prescription|order)\b`, `\brequest_(?:medication|test)_order\b`)
-	if action && (str(c, "app") != "clinician" || !hasScope(c, "clinical-action:request")) {
-		setFinding(req, "CLINICAL_DATA_NOT_AUTHORIZED", "Clinical action request requires clinician application context and explicit action scope.", nil)
+	if !action {
+		return nil
+	}
+	if str(c, "app") != "clinician" {
+		setFinding(req, "CLINICAL_DATA_NOT_AUTHORIZED", "Clinical action request requires clinician application context.", nil)
+		return nil
+	}
+	if !physicianProfessionalRole(str(c, "role")) {
+		setFinding(req, "PROFESSIONAL_ROLE_CAPABILITY_DENIED", "Clinical action requests are outside this signed professional role.", map[string]interface{}{"actorRole": str(c, "role")})
+		return nil
+	}
+	if !hasScope(c, "clinical-action:request") {
+		setFinding(req, "CLINICAL_DATA_NOT_AUTHORIZED", "Clinical action request requires explicit action scope.", nil)
 	}
 	return nil
 }
