@@ -15,10 +15,10 @@ test('VP demo has a credible multi-persona synthetic healthcare domain',()=>{
   assert.ok(Object.values(patients).some(p=>p.labs.length>=5),'at least one longitudinal lab story is required');
 });
 
-test('policy catalog covers the exact 24-stage clinician Gateway chain',async()=>{
+test('policy catalog covers the exact 27-stage clinician Gateway chain',async()=>{
   const chain=JSON.parse(await readFile(resolve(root,'modular-ai-guardrails/config/clinical-policy-chain.json'),'utf8'));
   const ids=demoCatalog().policyScenarios.map(x=>x.id);
-  assert.equal(ids.length,24);
+  assert.equal(ids.length,27);
   assert.deepEqual(ids,chain.map(x=>x.name));
   for(const p of demoCatalog().policyScenarios){
     assert.ok(p.scenario?.length>30,`${p.id} needs a realistic scenario`);

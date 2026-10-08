@@ -1,3 +1,4 @@
+import { recordFinOpsModelCall,recordGatewayBudgetHeaders,finOpsSnapshot,finOpsPrometheusMetrics,resetFinOps } from './p1-finops.mjs';
 import { workforce } from '../data/synthetic-healthcare.mjs';
 
 const REQUEST_BUCKETS=[0.05,0.1,0.25,0.5,1,2,5,10,30];
@@ -119,11 +120,14 @@ export function resetObservability(){
   for(const map of Object.values(counters))map.clear();
   for(const map of Object.values(histograms))map.clear();
   events.length=0;
+  resetFinOps();
   return executiveObservabilitySnapshot();
 }
 
-export function recordModelCall({context={},proxy='unknown',model='unknown',status=0,latencyMs=0,usage={},error=null}={}){
+export function recordModelCall({context={},proxy='unknown',model='unknown',status=0,latencyMs=0,usage={},headers={},error=null}={}){
   const app=context?.app||'unknown';
+  recordGatewayBudgetHeaders({app,headers});
+  recordFinOpsModelCall({app,status,latencyMs,usage,model});
   const labels={app,proxy,model,status:statusClass(status)};
   increment(counters.modelCalls,labels);
   observe(histograms.modelDuration,MODEL_BUCKETS,{app,proxy,model},Number(latencyMs)/1000);
@@ -222,6 +226,7 @@ export function executiveObservabilitySnapshot(){
       totalTokens:counterTotal(counters.modelTokens,l=>l.type==='total'),
       turns:counterTotal(counters.modelTurns)
     },
+    finOps:finOpsSnapshot(),
     grounding:{
       grounded:counterTotal(counters.grounding,l=>l.outcome==='grounded'),
       withheld:counterTotal(counters.grounding,l=>l.outcome==='withheld'),
@@ -260,6 +265,7 @@ function renderHistogram(name,help,map){
 
 export function prometheusMetrics(){
   const lines=[
+    ...finOpsPrometheusMetrics(),
     '# HELP helios_observability_info Helios executive observability exporter information',
     '# TYPE helios_observability_info gauge',
     `helios_observability_info{gateway="wso2-ai-gateway-1.2",mode="${esc(process.env.LLM_MODE||'deterministic')}"} 1`,

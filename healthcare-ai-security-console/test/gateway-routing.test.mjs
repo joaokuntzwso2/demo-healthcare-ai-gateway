@@ -17,7 +17,7 @@ test('Helios chain uses WSO2 1.2 /chat/completions and request-rewrite last', as
   const base=resolve(import.meta.dirname,'../../modular-ai-guardrails/config');
   for(const file of ['clinical-policy-chain.json','patient-support-policy-chain.json']){
     const chain=JSON.parse(await readFile(resolve(base,file),'utf8'));
-    assert.equal(chain.length,24);
+    assert.equal(chain.length,27);
     assert.equal(chain[0].name,'api-key-auth');
     assert.equal(chain.at(-1).name,'request-rewrite');
     for(const stage of chain.slice(1)){

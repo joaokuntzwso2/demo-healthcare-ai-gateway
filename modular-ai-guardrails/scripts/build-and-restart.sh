@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# HELIOS_P1_TRACING_PROFILE
+# Enable WSO2 AI Gateway 1.2's bundled OTel Collector + Jaeger services.
+case ",${COMPOSE_PROFILES:-}," in
+  *,tracing,*) ;;
+  *) export COMPOSE_PROFILES="${COMPOSE_PROFILES:+$COMPOSE_PROFILES,}tracing" ;;
+esac
 PACKAGE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEMO_HOME="${DEMO_HOME:-$(cd "$PACKAGE_ROOT/.." && pwd)}"
 GATEWAY_HOME="${GATEWAY_HOME:-$DEMO_HOME/wso2apip-ai-gateway-1.2.0}"
@@ -21,7 +27,7 @@ command -v docker >/dev/null || { echo 'ERROR: Docker is required.' >&2; exit 1;
 [[ -f "$GATEWAY_HOME/build.yaml" ]] || { echo "ERROR: $GATEWAY_HOME/build.yaml missing." >&2; exit 1; }
 : "${HELIOS_CONTEXT_SIGNING_KEY:?HELIOS_CONTEXT_SIGNING_KEY must be generated before starting the Gateway}"
 
-for required_policy in api-key-auth host-rewrite request-rewrite respond set-headers subscription-validation; do
+for required_policy in api-key-auth host-rewrite request-rewrite respond set-headers subscription-validation regex-guardrail llm-cost-based-ratelimit llm-cost; do
   grep -q "name: ${required_policy}$" "$GATEWAY_HOME/build.yaml" || {
     echo "ERROR: build.yaml is missing required WSO2 policy: ${required_policy}" >&2
     exit 1

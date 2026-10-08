@@ -110,7 +110,7 @@ POST https://localhost:8443/enterprise-openai/chat/completions   # Provider key 
 
 The proxy boundary intentionally keeps `/v1/chat/completions`, matching the banking reference. WSO2 `request-rewrite` remains last and rewrites the proxy-relative path to `/chat/completions` before the Provider hop. The Provider then maps its context to the OpenAI upstream `/v1` base URL.
 
-The repository pins the custom build to WSO2 AI Gateway **1.1.0** to preserve parity with the banking reference implementation. Revalidate SDK/API compatibility before changing the Gateway release.
+The local custom Gateway build and runner use WSO2 AI Gateway **1.2.0** (`wso2apip-ai-gateway-1.2.0`). The repository also retains a legacy `wso2apip-healthcare-ai-gateway-1.1.0` source tree for historical/reference purposes; it is not the active runtime used by `./run.sh`.
 
 ## Agent/tool authority model
 
@@ -258,4 +258,4 @@ See:
 
 - Custom Gateway policies/build: https://wso2.com/api-platform/docs/api-gateway/next/policies/custom-policies/building-gateway-with-custom-policies/
 - WSO2 CLI reference: https://wso2.com/api-platform/docs/tools/cli/reference/
-- AI Gateway 1.1.0 documentation: https://wso2.com/api-platform/docs/ai-gateway/1.1.0/
+- AI Gateway 1.2.0 documentation: https://wso2.com/api-platform/docs/ai-gateway/1.2.0/

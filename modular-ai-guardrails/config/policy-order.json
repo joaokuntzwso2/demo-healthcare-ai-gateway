@@ -3,6 +3,7 @@
   "custom-model-allowlist-guardrail",
   "custom-resource-budget-guardrail",
   "canonicalize-and-classify",
+  "regex-guardrail",
   "custom-jailbreak-authority-bypass-guardrail",
   "custom-request-regex-guardrail",
   "custom-request-phi-dlp-guardrail",
@@ -22,5 +23,7 @@
   "custom-response-url-guard",
   "custom-clinical-reliance-guard",
   "custom-structured-clinical-output-guard",
+  "llm-cost-based-ratelimit",
+  "llm-cost",
   "request-rewrite"
 ]

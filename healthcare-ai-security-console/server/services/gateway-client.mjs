@@ -1,3 +1,5 @@
+import { wso2TraceContext } from './p1-tracing.mjs';
+import { evidenceIdForContext,markGatewayTrace } from './evidence.mjs';
 import { recordModelCall } from './observability.mjs';
 import https from 'node:https';
 import crypto from 'node:crypto';
@@ -93,10 +95,16 @@ async function invokeModelCore({context,messages,model=DEFAULT_MODEL(),maxTokens
   const body={model,messages,max_tokens:maxTokens,temperature};
   if(Array.isArray(tools)&&tools.length){body.tools=tools;body.tool_choice=toolChoice||'auto';}
 
-  const resp=await requestJson(url,body,{[API_KEY_HEADER()]:apiKey,...signedHeliosContextHeaders(context)});
+  // HELIOS_P1_W3C_TRACEPARENT
+  const heliosEvidenceId=evidenceIdForContext(context);
+  const distributedTrace=wso2TraceContext(heliosEvidenceId);
+  const requestHeaders={[API_KEY_HEADER()]:apiKey,...signedHeliosContextHeaders(context)};
+  if(distributedTrace)requestHeaders.traceparent=distributedTrace.traceparent;
+  const resp=await requestJson(url,body,requestHeaders);
+  if(distributedTrace)markGatewayTrace(heliosEvidenceId,distributedTrace.traceId);
   const message=resp.body?.choices?.[0]?.message||null;
-  if(resp.status>=400) return {mode:'gateway',proxy,url,model,status:resp.status,error:resp.body,raw:resp.body,message:null,content:''};
-  return {mode:'gateway',proxy,url,model,status:resp.status,message,content:message?.content??'',raw:resp.body};
+  if(resp.status>=400) return {mode:'gateway',proxy,url,model,status:resp.status,headers:resp.headers,error:resp.body,raw:resp.body,message:null,content:''};
+  return {mode:'gateway',proxy,url,model,status:resp.status,headers:resp.headers,message,content:message?.content??'',raw:resp.body};
 }
 
 function normalizeProviderUsage(raw={}){
@@ -121,6 +129,7 @@ export async function invokeModel(args={}){
       status:result?.status||200,
       latencyMs,
       usage,
+      headers:result?.headers||{},
       error:result?.error||null
     });
     return enriched;

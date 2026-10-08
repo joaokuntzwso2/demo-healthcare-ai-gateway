@@ -13,11 +13,20 @@ policies:
       version: v1.0.1
       gomodule: github.com/wso2/gateway-controllers/policies/respond@v1
     - name: set-headers
-      version: v1.1.0
+      version: v1.2.0
       gomodule: github.com/wso2/gateway-controllers/policies/set-headers@v1
     - name: subscription-validation
       version: v1.0.3
       gomodule: github.com/wso2/gateway-controllers/policies/subscription-validation@v1
+    - name: regex-guardrail
+      version: v1.0.2
+      gomodule: github.com/wso2/gateway-controllers/policies/regex-guardrail@v1
+    - name: llm-cost-based-ratelimit
+      version: v1.1.1
+      gomodule: github.com/wso2/gateway-controllers/policies/llm-cost-based-ratelimit@v1
+    - name: llm-cost
+      version: v1.2.0
+      gomodule: github.com/wso2/gateway-controllers/policies/llm-cost@v1
     - name: custom-model-allowlist-guardrail
       version: v1.0.0
       filePath: policies/custom-model-allowlist-guardrail

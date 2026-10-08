@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# HELIOS_P1_TRACING_PROFILE
+# Enable WSO2 AI Gateway 1.2's bundled OTel Collector + Jaeger services.
+case ",${COMPOSE_PROFILES:-}," in
+  *,tracing,*) ;;
+  *) export COMPOSE_PROFILES="${COMPOSE_PROFILES:+$COMPOSE_PROFILES,}tracing" ;;
+esac
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if [[ -f "$ROOT/.helios-console.pid" ]]; then
   pid="$(cat "$ROOT/.helios-console.pid" 2>/dev/null || true)"

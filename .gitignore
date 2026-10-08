@@ -34,3 +34,7 @@ wso2apip-ai-gateway-1.2.0/docker-compose.helios.override.yaml
 # Generated Gateway distributions and local backups
 wso2apip-ai-gateway-1.2.0.zip
 *.before-*
+
+# Local event rollback snapshots
+.event-p0-backup/
+.event-p1-backup/

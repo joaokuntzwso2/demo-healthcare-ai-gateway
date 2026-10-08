@@ -10,5 +10,14 @@
     "build": "node build.mjs",
     "test": "node --test test/*.test.mjs"
   },
-  "engines": {"node": ">=20"}
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
 }

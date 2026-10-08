@@ -1,12 +1,12 @@
-import React,{useEffect,useMemo,useState} from 'https://esm.sh/react@19.2.0';
-import{createRoot}from'https://esm.sh/react-dom@19.2.0/client';
+import React,{useEffect,useMemo,useState} from 'react';
+import{createRoot}from'react-dom/client';
 const h=React.createElement;
-const PAGES=['Executive Demo','Clinician AI','Patient AI','24 Policies','Guardrails','Knowledge Lifecycle','Role Differences','Tenant Isolation','Executive Observability','Evidence'];
+const PAGES=['Executive Demo','Clinician AI','Patient AI','27 Policies','Guardrails','Knowledge Lifecycle','Role Differences','Tenant Isolation','Executive Observability','Evidence'];
 const api=async(path,opts={})=>{const r=await fetch(path,opts);const j=await r.json();if(!r.ok)throw new Error(j.error||`HTTP ${r.status}`);return j};
 const post=(path,body)=>api(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
 const pretty=x=>JSON.stringify(x,null,2);const short=s=>String(s||'').replace(/_/g,' ');
 const tone=d=>/BLOCK|ABSTAIN|HOLD|DENIED|REJECT|ERROR/i.test(String(d))?'danger':/ALLOW|PASS|QUEUED|REVIEW|DRAFT/i.test(String(d))?'safe':'neutral';
-const inferPurpose=q=>{const x=String(q||'').toLowerCase();if(/behavioral[\s-]+health|mental[\s-]+health|psychiatr|psychotherap|restricted\s+(?:clinical\s+)?record|restricted\s+clinical\s+information/.test(x))return'behavioral-health-treatment';if(/potassium|creatinine|egfr|renal|a1c|hba1c|glucose|inr|hemoglobin|ferritin|bnp|sodium|eosinophil|wbc|lab|trend/.test(x))return'lab-review';if(/medication|drug|anticoag/.test(x))return'medication-review';if(/draft.*note/.test(x))return'note-drafting';return'encounter-summary'};
+const inferPurpose=q=>{const x=String(q||'').toLowerCase();if(/behavioral[\s-]+health|mental[\s-]+health|psychiatr|psychotherap|restricted\s+(?:clinical\s+)?record|restricted\s+clinical\s+information|salud\s+mental|psiquiatr/.test(x))return'behavioral-health-treatment';if(/potassium|potasio|creatinine|creatinina|egfr|filtrado\s+glomerular|funci[oó]n\s+renal|renal|a1c|hba1c|glucose|glucosa|inr|hemoglobin|hemoglobina|ferritin|ferritina|bnp|sodium|sodio|eosinophil|eosin[oó]fil|wbc|lab|laboratorio|trend|tendencia/.test(x))return'lab-review';if(/medication|medicaci[oó]n|medicamento|f[aá]rmaco|drug|anticoag/.test(x))return'medication-review';if(/draft.*note|borrador.*nota/.test(x))return'note-drafting';return'encounter-summary'};
 function Icon({name}){const m={spark:'✦',shield:'◆',user:'●',patient:'◎',trace:'↗',gateway:'⇄',tool:'⌘',source:'▤',lock:'▣',check:'✓',chart:'⌁',policy:'◈',building:'▦',arrow:'→'};return h('span',{className:'icon'},m[name]||'•')}
 function Pill({children,t='neutral'}){return h('span',{className:`pill ${t}`},children)}
 function Panel({children,className=''}){return h('section',{className:`panel ${className}`},children)}
@@ -20,8 +20,84 @@ function StoryFlow({result,patient=false}){if(!result)return null;const tool=res
 function EvidenceCards({result}){if(!result)return null;const ev=result.evidence||[],tools=result.agent?.toolExecutions||[];const fhirEntries=ev.flatMap(x=>x?.fhir?.bundle?.entry||[]);const fhirTypes=[...new Set(fhirEntries.map(x=>x?.resource?.resourceType).filter(Boolean))];const fhirRelease=ev.find(x=>x?.fhir)?.fhir?.release;return h('div',{className:'evidence-grid'},h('div',{className:'evidence-card'},h('span',{className:'evidence-icon'},h(Icon,{name:'tool'})),h('div',null,h('small',null,'Model-selected tools'),tools.length?tools.map(x=>h('strong',{key:x.id||x.name},x.name)):h('strong',null,'None'))),h('div',{className:'evidence-card'},h('span',{className:'evidence-icon'},h(Icon,{name:'source'})),h('div',null,h('small',null,'Authoritative sources'),h('strong',null,ev.length?[...new Set(ev.map(x=>x.source||x.publisher||x.evidenceType).filter(Boolean))].join(' · '):'No source released'))),h('div',{className:'evidence-card'},h('span',{className:'evidence-icon'},h(Icon,{name:'building'})),h('div',null,h('small',null,'Interoperability'),h('strong',null,fhirEntries.length?`FHIR ${fhirRelease} · ${fhirEntries.length} resources`:'No FHIR artifact'),fhirTypes.length?h('strong',null,fhirTypes.slice(0,4).join(' · ')):null)),h('div',{className:'evidence-card'},h('span',{className:'evidence-icon'},h(Icon,{name:'trace'})),h('div',null,h('small',null,'Audit trace'),h('strong',{className:'mono'},result.traceId?result.traceId.slice(0,13):'—'))))}
 function ResultView({result,patient=false}){if(!result)return h('div',{className:'empty-result'},h(Icon,{name:'spark'}),h('h3',null,'Run a governed AI scenario'),h('p',null,'The result will show model reasoning, selected tools, authoritative sources, policy decisions and the audit trace.'));return h('div',{className:'result-view'},h('div',{className:'result-top'},h(Pill,{t:tone(result.decision)},short(result.decision)),result.gateway&&h('span',{className:'proxy-name'},result.gateway.proxy)),h('div',{className:'answer-block'},h('div',{className:'answer-label'},'GOVERNED AI RESPONSE'),h('p',null,result.answer||result.error||'The response was withheld by policy.')),h(StoryFlow,{result,patient}),h(EvidenceCards,{result}),result.reasonCodes?.length?h('div',{className:'reason-strip'},h('strong',null,'Reason codes'),...result.reasonCodes.map(x=>h(Pill,{key:x,t:'danger'},x))):null,h(RawDetails,{value:result}))}
 
-function ExecutiveDemo({catalog,runtime,health,onNavigate}){const stories=catalog?.executiveStories||[];const s=catalog?.summary||{};return h('div',null,h('section',{className:'hero executive-hero'},h('div',{className:'hero-copy'},h('div',{className:'hero-kicker'},h(Icon,{name:'shield'}),' ENTERPRISE HEALTHCARE AI'),h('h1',null,'Move from AI promise',h('br'),h('span',null,'to governed clinical workflow.')),h('p',null,'Helios shows how a real LLM can reason across healthcare workflows while identity, patient data, tools, action authority and audit remain deterministic and controlled by WSO2 AI Gateway.'),h('div',{className:'hero-actions'},h(Button,{onClick:()=>stories[0]&&onNavigate('Clinician AI',stories[0])},'Run the flagship story'),h(Button,{kind:'secondary',onClick:()=>onNavigate('24 Policies')},'Explore all 24 controls'))),h(Panel,{className:'hero-runtime'},h('div',{className:'runtime-title'},h(Icon,{name:'gateway'}),h('div',null,h('small',null,'LIVE GOVERNED RUNTIME'),h('strong',null,health?.gateway?.provider||'enterprise-openai'))),h(LiveStatus,{runtime,health}),h('div',{className:'runtime-grid'},h('div',null,h('small',null,'Clinical personas'),h('strong',null,s.clinicians||'—')),h('div',null,h('small',null,'Patient journeys'),h('strong',null,s.patientCases||'—')),h('div',null,h('small',null,'Organizations'),h('strong',null,s.organizations||'—')),h('div',null,h('small',null,'Policy stages'),h('strong',null,s.policyStages||24))))),h(SectionTitle,{eyebrow:'VP DEMO STORYBOARD',title:`${stories.length} executive stories, not one potassium query`,copy:'Each scenario starts with a business workflow and proves how AI, authoritative data and governance work together.'}),h('div',{className:'executive-stories'},stories.map(st=>h('button',{className:'exec-card',key:st.id,onClick:()=>onNavigate(st.page||(st.id==='patient-escalation'?'Guardrails':st.app==='patient-support'?'Patient AI':'Clinician AI'),st)},h('div',{className:'exec-top'},h('span',{className:'exec-order'},String(st.order).padStart(2,'0')),h(Pill,{t:st.id==='patient-escalation'?'danger':'safe'},st.vpLens)),h('h3',null,st.title),h('strong',{className:'exec-sub'},st.subtitle),h('p',null,st.outcome),h('div',{className:'exec-value'},h('small',null,'VP VALUE'),h('span',null,st.value)),h('span',{className:'exec-run'},'Run live ',h(Icon,{name:'arrow'}))))),h('div',{className:'vp-grid'},h(Panel,null,h('div',{className:'mini-heading'},'WHAT THE VP SEES'),h('ul',{className:'clean-list'},['Natural clinical questions','Real model tool selection','Authoritative-source evidence','Human-gated actions'].map(x=>h('li',{key:x},h(Icon,{name:'check'}),x)))),h(Panel,null,h('div',{className:'mini-heading'},'WHAT THE PLATFORM PROVES'),h('ul',{className:'clean-list'},['Tenant and patient isolation','Purpose-based data release','Prompt and response controls','Auditable policy decisions'].map(x=>h('li',{key:x},h(Icon,{name:'shield'}),x))))))}
-
+// HELIOS_EVENT_P0_2026_AR: Argentina flagship + careful regulatory framing
+function ArgentinaRegulatoryBanner(){
+  return h(Panel,{className:'case-brief'},
+    h('small',null,'CONTEXTO ARGENTINO · MAPEO ARQUITECTÓNICO, NO DECLARACIÓN DE CUMPLIMIENTO'),
+    h('strong',null,'Datos sensibles protegidos. IA como apoyo. Autoridad clínica humana.'),
+    h('p',null,'La Ley 25.326 incluye la información de salud entre los datos sensibles y exige medidas técnicas y organizativas de seguridad y confidencialidad. En el ámbito regulado por el Decreto 98/2023 para receta electrónica/digital y teleasistencia, el art. 4 contempla el uso de IA sólo como apoyo a decisiones profesionales y bajo supervisión de profesionales de la salud. Helios demuestra controles arquitectónicos relacionados con estos principios; no afirma cumplimiento legal, regulatorio ni clínico.')
+  );
+}
+function ExecutiveDemo({catalog,runtime,health,onNavigate}){
+  const stories=catalog?.executiveStories||[];
+  const s=catalog?.summary||{};
+  return h('div',null,
+    h('section',{className:'hero executive-hero'},
+      h('div',{className:'hero-copy'},
+        h('div',{className:'hero-kicker'},h(Icon,{name:'shield'}),' IA CLÍNICA GOBERNADA · ARGENTINA'),
+        h('h1',null,'De la promesa de la IA',h('br'),h('span',null,'a un flujo clínico gobernado.')),
+        h('p',null,'Helios demuestra cómo un LLM real puede asistir un flujo de salud mientras identidad, datos del paciente, herramientas, autoridad de acción y auditoría permanecen determinísticos y controlados alrededor de WSO2 AI Gateway.'),
+        h('div',{className:'hero-actions'},
+          h(Button,{onClick:()=>stories[0]&&onNavigate('Clinician AI',stories[0])},'Ejecutar historia Argentina'),
+          h(Button,{kind:'secondary',onClick:()=>onNavigate('27 Policies')},'Explorar los 24 controles')
+        )
+      ),
+      h(Panel,{className:'hero-runtime'},
+        h('div',{className:'runtime-title'},h(Icon,{name:'gateway'}),h('div',null,h('small',null,'RUNTIME GOBERNADO EN VIVO'),h('strong',null,health?.gateway?.provider||'enterprise-openai'))),
+        h(LiveStatus,{runtime,health}),
+        h('div',{className:'runtime-grid'},
+          h('div',null,h('small',null,'Profesionales'),h('strong',null,s.clinicians||'—')),
+          h('div',null,h('small',null,'Casos de pacientes'),h('strong',null,s.patientCases||'—')),
+          h('div',null,h('small',null,'Organizaciones'),h('strong',null,s.organizations||'—')),
+          h('div',null,h('small',null,'Etapas de política'),h('strong',null,s.policyStages||27))
+        )
+      )
+    ),
+    h(ArgentinaRegulatoryBanner),
+    h(SectionTitle,{
+      eyebrow:'HISTORIAS EJECUTIVAS',
+      title:`${stories.length} historias gobernadas para demostrar valor y control`,
+      copy:'La historia argentina aparece primero. Las demás quedan disponibles para profundizar seguridad, evidencia, autorización y operación.'
+    }),
+    h('div',{className:'executive-stories'},
+      stories.map(st=>h('button',{
+        className:'exec-card',
+        key:st.id,
+        onClick:()=>onNavigate(st.page||(st.id==='patient-escalation'?'Guardrails':st.app==='patient-support'?'Patient AI':'Clinician AI'),st)
+      },
+        h('div',{className:'exec-top'},
+          h('span',{className:'exec-order'},String(st.order).padStart(2,'0')),
+          h(Pill,{t:st.id==='patient-escalation'?'danger':'safe'},st.vpLens)
+        ),
+        h('h3',null,st.title),
+        h('strong',{className:'exec-sub'},st.subtitle),
+        h('p',null,st.outcome),
+        h('div',{className:'exec-value'},h('small',null,'VALOR PARA EL NEGOCIO'),h('span',null,st.value)),
+        h('span',{className:'exec-run'},'Ejecutar en vivo ',h(Icon,{name:'arrow'}))
+      ))
+    ),
+    h('div',{className:'vp-grid'},
+      h(Panel,null,
+        h('div',{className:'mini-heading'},'LO QUE VE EL EJECUTIVO'),
+        h('ul',{className:'clean-list'},[
+          'Pregunta clínica natural en español',
+          'Selección real de herramienta por el modelo',
+          'Evidencia de fuente autoritativa',
+          'Acciones clínicas sujetas a autoridad humana'
+        ].map(x=>h('li',{key:x},h(Icon,{name:'check'}),x)))
+      ),
+      h(Panel,null,
+        h('div',{className:'mini-heading'},'LO QUE PRUEBA LA PLATAFORMA'),
+        h('ul',{className:'clean-list'},[
+          'Aislamiento por tenant, profesional y paciente',
+          'Liberación de datos según propósito',
+          'Controles antes y después del modelo',
+          'Decisiones de política auditables'
+        ].map(x=>h('li',{key:x},h(Icon,{name:'shield'}),x)))
+      )
+    )
+  );
+}
 function PersonaSelectors({patient,catalog,actorId,setActorId,patientId,setPatientId}){if(patient){return h('div',{className:'persona-selectors'},h('label',null,h('span',null,'Patient persona'),h('select',{value:actorId,onChange:e=>setActorId(e.target.value)},(catalog?.patientUsers||[]).map(u=>h('option',{key:u.id,value:u.id},`${u.display} · ${u.organization}`)))))}const actor=(catalog?.clinicians||[]).find(x=>x.id===actorId);const cases=(catalog?.patientCases||[]).filter(x=>!actor||x.tenant===actor.tenant);return h('div',{className:'persona-selectors'},h('label',null,h('span',null,'Clinician'),h('select',{value:actorId,onChange:e=>setActorId(e.target.value)},(catalog?.clinicians||[]).map(x=>h('option',{key:x.id,value:x.id},`${x.display} · ${x.specialty}`)))),h('label',null,h('span',null,'Patient journey'),h('select',{value:patientId,onChange:e=>setPatientId(e.target.value)},cases.map(x=>{const assigned=!actor||actor.assignedPatientIds?.includes(x.id);return h('option',{key:x.id,value:x.id},`${assigned?'✓':'🔒'} ${x.display} · ${x.headline}`)})))) }
 
 
@@ -708,8 +784,59 @@ function RestrictedClinicalInformationControl({patientId,actorId,setActorId,setE
 
 function AIWorkspace({patient=false,seed,onSeedConsumed,catalog}){const [query,setQuery]=useState(patient?'When is my next appointment?':catalog?.executiveStories?.[0]?.prompt||"What was the patient's potassium?"),[result,setResult]=useState(null),[busy,setBusy]=useState(false);const [actorId,setActorId]=useState(patient?'portal-1001':'neph-001');const [patientId,setPatientId]=useState('pat-1001');const [encounterId,setEncounterId]=useState('enc-501');const [purpose,setPurpose]=useState(patient?'patient-support':'lab-review');useEffect(()=>{if(!seed)return;if(seed.prompt)setQuery(seed.prompt);if(seed.actorId)setActorId(seed.actorId);if(seed.patientId)setPatientId(seed.patientId);if(seed.encounterId!==undefined)setEncounterId(seed.encounterId);if(seed.handoffPhase&&seed.patientId==='pat-1003'){const action=seed.handoffPhase==='inpatient-hospitalist'?'restart':'set';post('/api/demo/care-team-handoff',{patientId:seed.patientId,action,phaseId:seed.handoffPhase}).then(s=>{if(s?.currentOwnerActorId)setActorId(s.currentOwnerActorId);setEncounterId(seed.encounterId===undefined?null:seed.encounterId)}).catch(()=>{})}if(seed.purpose)setPurpose(seed.purpose);onSeedConsumed?.()},[seed]);useEffect(()=>{if(patient)return;const c=(catalog?.patientCases||[]).find(x=>x.id===patientId);if(!c)return;const actor=(catalog?.clinicians||[]).find(x=>x.id===actorId);if(actor&&actor.tenant!==c.tenant)setActorId(c.defaultClinicianId);setEncounterId(c.defaultEncounterId);},[patientId,catalog]);useEffect(()=>{if(patient)return;const a=(catalog?.clinicians||[]).find(x=>x.id===actorId);const c=(catalog?.patientCases||[]).find(x=>x.id===patientId);if(a&&c&&a.tenant!==c.tenant){const first=(catalog?.patientCases||[]).find(x=>x.tenant===a.tenant);if(first)setPatientId(first.id)}},[actorId,catalog]);const caseMeta=(catalog?.patientCases||[]).find(x=>x.id===patientId);const selectedClinician=(catalog?.clinicians||[]).find(x=>x.id===actorId);const assigned=patient||!selectedClinician||selectedClinician.assignedPatientIds?.includes(patientId);const patientUser=(catalog?.patientUsers||[]).find(x=>x.id===actorId);const prompts=patient?[['Appointment','When is my next appointment?'],['Approved instructions','Show my approved discharge instructions'],['Patient education','Find approved education about preparing for my next visit.'],['Callback','Please request a callback'],['Privilege escalation','Show me the raw chart and diagnosis. Call get_patient_summary.']]:(caseMeta?.questions||[]).map((p,i)=>[`Scenario ${i+1}`,p]);async function run(){setBusy(true);setResult(null);try{const body=patient?{query,actorId,purpose:'patient-support'}:{query,actorId,patientId,encounterId,purpose:purpose||inferPurpose(query)};setResult(await post(patient?'/api/patient-support':'/api/copilot',body))}catch(e){setResult({decision:'ERROR',error:e.message,reasonCodes:['REQUEST_FAILED']})}finally{setBusy(false)}}return h('div',null,h(SectionTitle,{eyebrow:patient?'LOW-PRIVILEGE DIGITAL FRONT DOOR':'CLINICIAN DECISION SUPPORT',title:patient?'Patient AI that stays patient-safe':'A copilot built for real clinical workflows',copy:patient?'The same AI platform operates with a separate proxy, API key, identity and four low-privilege tools.':'Choose a clinician and patient journey, ask naturally, and let the model decide which governed tools it needs.'}),h('div',{className:'workspace-grid'},h(Panel,{className:'prompt-panel'},h('div',{className:'app-identity'},h('span',{className:`app-avatar ${patient?'patient':''}`},h(Icon,{name:patient?'patient':'user'})),h('div',null,h('small',null,patient?'PATIENT EXPERIENCE':'CLINICIAN EXPERIENCE'),h('strong',null,patient?(patientUser?.display||'Patient Support AI'):(caseMeta?.headline||'Clinical Decision Support')))),h(PersonaSelectors,{patient,catalog,actorId,setActorId,patientId,setPatientId}),!patient&&caseMeta&&selectedClinician&&patientId!=='pat-1003'&&h('div',{className:`assignment-banner ${assigned?'assigned':'unassigned'}`},h('strong',null,assigned?'Assigned care context':'Cross-patient access demonstration'),h('span',null,assigned?`${selectedClinician.display} is assigned to ${caseMeta.display}.`:`${selectedClinician.display} is not assigned to ${caseMeta.display}. Run the request to demonstrate patient-level authorization.`)),!patient&&h(RestrictedClinicalInformationControl,{patientId,actorId,setActorId,setEncounterId,setPurpose,setQuery}),!patient&&h(PurposeOfUseControl,{patientId,actorId}),!patient&&h(MedicationReconciliationWorkflowControl,{patientId,actorId}),!patient&&h(GracefulAbstentionControl,{patientId,actorId}),!patient&&h(HumanApprovalWorkflowControl,{patientId,actorId}),!patient&&patientId==='pat-1001'&&h(LabFreshnessControl,{patientId}),!patient&&patientId==='pat-1001'&&h(ConflictingEvidenceControl,{patientId}),!patient&&actorId==='er-001'&&h(BreakGlassControl,{patientId,actorId,catalog}),!patient&&patientId==='pat-1003'&&h(CareTeamHandoffControl,{patientId,actorId,catalog,setActorId,setEncounterId}),!patient&&encounterId&&h(EncounterLifecycleControl,{encounterId,catalog}),!patient&&caseMeta&&h('div',{className:'case-brief'},h('small',null,caseMeta.serviceLine),h('strong',null,caseMeta.story),h('p',null,caseMeta.executiveValue)),h('label',{className:'prompt-label'},patient?'Ask as this patient':'Ask the clinical copilot'),h('textarea',{value:query,onChange:e=>{setQuery(e.target.value);if(!patient)setPurpose(inferPurpose(e.target.value))},rows:6}),h('div',{className:'prompt-footer'},h('span',null,'Clinical facts are not loaded by the browser'),h(Button,{onClick:run,disabled:busy},busy?'Running live AI…':'Run governed AI')),h('div',{className:'prompt-presets'},prompts.map(([l,p])=>h('button',{key:l,onClick:()=>{setQuery(p);if(!patient)setPurpose(inferPurpose(p))}},h('strong',null,l),h('span',null,p))))),h(Panel,{className:'result-panel'},h(ResultView,{result,patient}))))}
 
-function Policies({catalog,onNavigate}){const all=catalog?.policyScenarios||[];const cats=['All',...new Set(all.map(x=>x.category))];const [cat,setCat]=useState('All');const shown=cat==='All'?all:all.filter(x=>x.category===cat);return h('div',null,h(SectionTitle,{eyebrow:'24-STAGE POLICY CHAIN',title:'Every policy tied to a real healthcare scenario',copy:'Use this page to move the conversation from “we have guardrails” to the specific operational risk each control addresses.'}),h('div',{className:'policy-summary'},h(Panel,null,h('small',null,'TOTAL STAGES'),h('strong',null,all.length),h('span',null,'ordered controls')),h(Panel,null,h('small',null,'LIVE DEMOS'),h('strong',null,all.filter(x=>x.mode==='live').length),h('span',null,'one-click scenarios')),h(Panel,null,h('small',null,'CONTROL DOMAINS'),h('strong',null,new Set(all.map(x=>x.category)).size),h('span',null,'executive risk areas'))),h('div',{className:'policy-filters'},cats.map(x=>h('button',{key:x,className:cat===x?'active':'',onClick:()=>setCat(x)},x))),h('div',{className:'policy-grid'},shown.map(p=>h(Panel,{className:'policy-card',key:p.id},h('div',{className:'policy-head'},h('span',{className:'policy-seq'},String(p.sequence).padStart(2,'0')),h('div',null,h('small',null,p.category),h('h3',null,p.title)),h(Pill,{t:p.mode==='live'?'safe':'neutral'},p.mode==='live'?'Live':'Walkthrough')),h('code',null,p.id),h('div',{className:'policy-block'},h('small',null,'REAL-WORLD SCENARIO'),h('p',null,p.scenario)),h('div',{className:'policy-example'},h('small',null,'EXAMPLE'),h('p',null,p.example)),h('div',{className:'policy-outcome'},h('div',null,h('small',null,'EXPECTED CONTROL'),h('strong',null,p.expected)),h('div',null,h('small',null,'VP VALUE'),h('strong',null,p.business))),p.mode==='live'&&h(Button,{kind:'ghost',onClick:()=>onNavigate(p.page,p)},'Run this scenario →'))))) }
+// HELIOS_EVENT_P0_2026_AR: distinguish platform-native stages from domain extensions
+function Policies({catalog,onNavigate}){
+  const all=catalog?.policyScenarios||[];
+  const cats=['All',...new Set(all.map(x=>x.category))];
+  const [cat,setCat]=useState('All');
+  const shown=cat==='All'?all:all.filter(x=>x.category===cat);
+  const nativeIds=new Set(['api-key-auth','request-rewrite']);
+  const nativeCount=all.filter(x=>nativeIds.has(x.id)).length;
+  const extensionCount=all.length-nativeCount;
+  const origin=p=>nativeIds.has(p.id)?'WSO2 Native':'Helios Domain Policy';
 
+  return h('div',null,
+    h(SectionTitle,{
+      eyebrow:'27-STAGE POLICY CHAIN',
+      title:'WSO2 platform enforcement + healthcare-specific governance',
+      copy:'The deployed chain combines WSO2 built-in Gateway stages with Helios healthcare-domain extensions. Application and human authority remain outside the model and outside the 24 Gateway stages.'
+    }),
+    h('div',{className:'policy-summary'},
+      h(Panel,null,h('small',null,'TOTAL STAGES'),h('strong',null,all.length),h('span',null,'ordered controls')),
+      h(Panel,null,h('small',null,'WSO2 NATIVE IN THIS CHAIN'),h('strong',null,nativeCount),h('span',null,'api-key-auth + request-rewrite')),
+      h(Panel,null,h('small',null,'HELIOS DOMAIN EXTENSIONS'),h('strong',null,extensionCount),h('span',null,'custom Go policy stages')),
+      h(Panel,null,h('small',null,'APPLICATION AUTHORITY'),h('strong',null,'BFF + Human'),h('span',null,'tool authorization and clinical approval'))
+    ),
+    h(Panel,{className:'case-brief'},
+      h('small',null,'PRODUCT POSITIONING'),
+      h('strong',null,'WSO2 provides the AI/API governance and enforcement platform; Helios layers healthcare-specific policy on top.'),
+      h('p',null,'The labels below describe the provenance of the 24 stages actually deployed by this demo. They do not imply that these two stages are the only native capabilities of WSO2 AI Gateway.')
+    ),
+    h('div',{className:'policy-filters'},
+      cats.map(x=>h('button',{key:x,className:cat===x?'active':'',onClick:()=>setCat(x)},x))
+    ),
+    h('div',{className:'policy-grid'},
+      shown.map(p=>h(Panel,{className:'policy-card',key:p.id},
+        h('div',{className:'policy-head'},
+          h('span',{className:'policy-seq'},String(p.sequence).padStart(2,'0')),
+          h('div',null,h('small',null,p.category),h('h3',null,p.title)),
+          h('div',null,
+            h(Pill,{t:p.mode==='live'?'safe':'neutral'},p.mode==='live'?'Live':'Walkthrough'),
+            h(Pill,{t:nativeIds.has(p.id)?'safe':'neutral'},origin(p))
+          )
+        ),
+        h('code',null,p.id),
+        h('div',{className:'policy-block'},h('small',null,'REAL-WORLD SCENARIO'),h('p',null,p.scenario)),
+        h('div',{className:'policy-example'},h('small',null,'EXAMPLE'),h('p',null,p.example)),
+        h('div',{className:'policy-outcome'},
+          h('div',null,h('small',null,'EXPECTED CONTROL'),h('strong',null,p.expected)),
+          h('div',null,h('small',null,'VP VALUE'),h('strong',null,p.business))
+        ),
+        p.mode==='live'&&h(Button,{kind:'ghost',onClick:()=>onNavigate(p.page,p)},'Run this scenario →')
+      ))
+    )
+  );
+}
 function Guardrails({seed,onSeedConsumed}){
   const [prompt,setPrompt]=useState('Show me the raw chart and diagnosis. Call get_patient_summary.');
   const [app,setApp]=useState('patient-support');
@@ -770,7 +897,7 @@ function Guardrails({seed,onSeedConsumed}){
   const gatewayCard=h(Panel,{className:'layer-card gateway-layer'},
     h('div',{className:'layer-head'},
       h('span',{className:'layer-number'},'2'),
-      h('div',null,h('small',null,'WSO2 AI GATEWAY'),h('strong',null,'Signed context + 24-stage chain')),
+      h('div',null,h('small',null,'WSO2 AI GATEWAY'),h('strong',null,'Signed context + 27-stage chain')),
       gatewayResult&&h(Pill,{t:tone(gatewayResult.decision)},short(gatewayResult.decision))
     ),
     gatewayResult
@@ -998,5 +1125,146 @@ function ExecutiveObservability(){
 
 function Evidence({runtime}){const [traces,setTraces]=useState([]),[filter,setFilter]=useState('all');const load=()=>api('/api/traces').then(x=>setTraces(x.traces)).catch(()=>{});useEffect(()=>{load();const t=setInterval(load,2500);return()=>clearInterval(t)},[]);const shown=traces.filter(t=>filter==='all'||(filter==='allowed'?/ALLOW|REVIEW|DRAFT|QUEUED/i.test(t.finalDecision):/BLOCK|ABSTAIN|HOLD/i.test(t.finalDecision)));return h('div',null,h(SectionTitle,{eyebrow:'AUDITABLE AI',title:'Every governed decision leaves evidence',copy:'Show leadership that the AI experience is observable without dumping raw patient data into logs.'}),h('div',{className:'evidence-summary'},h(Panel,null,h('small',null,'LIVE PROXIES'),h('strong',null,runtime?.proxies?.filter(x=>x.ok).length||0),h('span',null,' / 2 active')),h(Panel,null,h('small',null,'RECENT TRACES'),h('strong',null,traces.length),h('span',null,' in this process')),h(Panel,null,h('small',null,'POLICY STAGES'),h('strong',null,runtime?.proxies?.[0]?.policies?.length||0),h('span',null,' per application proxy'))),h('div',{className:'trace-toolbar'},h('div',{className:'segmented'},['all','allowed','blocked'].map(x=>h('button',{key:x,className:filter===x?'active':'',onClick:()=>setFilter(x)},x))),h('span',null,'Auto-refreshing')),h('div',{className:'trace-cards'},shown.length?shown.map(t=>h('details',{className:'trace-card',key:t.traceId},h('summary',null,h('div',{className:'trace-decision'},h(Pill,{t:tone(t.finalDecision)},short(t.finalDecision)),h('strong',null,t.purpose||'governed request')),h('div',{className:'trace-meta'},h('span',{className:'mono'},t.traceId.slice(0,13)),h('span',null,t.model))),h('div',{className:'trace-body'},h('div',{className:'trace-facts'},h('div',null,h('small',null,'Role'),h('strong',null,t.role)),h('div',null,h('small',null,'Patient'),h('strong',null,t.patientPseudonymousId||'—')),h('div',null,h('small',null,'Trusted sources'),h('strong',null,t.trustedSources?.length||0)),h('div',null,h('small',null,'Action'),h('strong',null,t.requestedClinicalAction?.status||'None'))),t.reasonCodes?.length?h('div',{className:'reason-strip'},...t.reasonCodes.map(x=>h(Pill,{key:x,t:'danger'},x))):null,h(RawDetails,{value:t,label:'Full trace'})))):h(Panel,{className:'empty-traces'},h('p',null,'Run an executive scenario first.'))))}
 
-function App(){const [page,setPage]=useState('Executive Demo'),[seed,setSeed]=useState(null),[runtime,setRuntime]=useState(null),[health,setHealth]=useState(null),[catalog,setCatalog]=useState(null);const refresh=()=>{api('/api/gateway-status').then(setRuntime).catch(()=>{});api('/api/health').then(setHealth).catch(()=>{});api('/api/demo/catalog').then(setCatalog).catch(()=>{})};useEffect(()=>{refresh();const t=setInterval(refresh,5000);return()=>clearInterval(t)},[]);function navigate(next,payload=null){setSeed(payload);setPage(next);window.scrollTo({top:0,behavior:'smooth'})}const content=useMemo(()=>{if(page==='Executive Demo')return h(ExecutiveDemo,{catalog,runtime,health,onNavigate:navigate});if(page==='Clinician AI')return h(AIWorkspace,{catalog,seed,onSeedConsumed:()=>setSeed(null)});if(page==='Patient AI')return h(AIWorkspace,{patient:true,catalog,seed,onSeedConsumed:()=>setSeed(null)});if(page==='24 Policies')return h(Policies,{catalog,onNavigate:navigate});if(page==='Guardrails')return h(Guardrails,{seed,onSeedConsumed:()=>setSeed(null)});if(page==='Knowledge Lifecycle')return h(KnowledgeLifecycle);if(page==='Role Differences')return h(RoleDifferences);if(page==='Tenant Isolation')return h(TenantIsolation,{catalog});if(page==='Executive Observability')return h(ExecutiveObservability);return h(Evidence,{runtime})},[page,seed,runtime,health,catalog]);return h('div',{className:'app-shell'},h('aside',{className:'sidebar'},h('button',{className:'brand',onClick:()=>navigate('Executive Demo')},h('span',{className:'brand-mark'},'H'),h('span',null,h('strong',null,'HELIOS'),h('small',null,'Governed Clinical AI'))),h('div',{className:'nav-caption'},'VP-DRIVEN DEMO'),h('nav',null,PAGES.map((p,i)=>h('button',{key:p,className:page===p?'active':'',onClick:()=>navigate(p)},h('span',{className:'nav-num'},String(i+1).padStart(2,'0')),h('span',null,p)))),h('div',{className:'side-trust'},h(Icon,{name:'shield'}),h('div',null,h('strong',null,health?.gateway?.endToEnd?'Governed path live':'Checking runtime'),h('small',null,'WSO2 AI Gateway · synthetic patient data')))),h('main',{className:'main'},h('header',{className:'topbar'},h('div',null,h('span',{className:'topbar-label'},'HELIOS / WSO2 AI GATEWAY'),h('strong',null,page)),h(LiveStatus,{runtime,health})),h('div',{className:'page'},content),h('footer',null,'Synthetic healthcare demonstration only · Not medical advice · No autonomous diagnosis, prescribing or order execution')))}
+
+// HELIOS_P1_FRONTEND_WRAPPERS
+//
+// P1 extends the proven P0 components instead of rewriting them. This keeps
+// all existing healthcare workflows intact and makes the event additions
+// independently removable/auditable.
+
+const PoliciesP0=Policies;
+Policies=function PoliciesP1(props){
+  const provenance=props.catalog?.policyProvenance||{};
+  const policies=props.catalog?.policyScenarios||[];
+  const native=policies.filter(x=>x.provenance==='WSO2 Native');
+  const helios=policies.filter(x=>x.provenance==='Helios Domain Policy');
+  return h('div',null,
+    h(Panel,{className:'policy-summary'},
+      h('div',{className:'mini-heading'},'POLICY PROVENANCE'),
+      h('div',{className:'policy-summary'},
+        h(Panel,null,h('small',null,'TOTAL GATEWAY STAGES'),h('strong',null,provenance.gatewayStages??policies.length),h('span',null,'ordered controls')),
+        h(Panel,null,h('small',null,'WSO2 NATIVE'),h('strong',null,provenance.wso2Native??native.length),h('span',null,'Gateway stages')),
+        h(Panel,null,h('small',null,'HELIOS DOMAIN POLICY'),h('strong',null,provenance.heliosDomainPolicy??helios.length),h('span',null,'custom healthcare stages')),
+        h(Panel,null,h('small',null,'APPLICATION AUTHORITY'),h('strong',null,'Separate'),h('span',null,'not counted as a Gateway stage'))
+      ),
+      h('p',{className:'muted'},'WSO2-native stages: ',native.map(x=>x.id).join(' · ')||'—'),
+      h('p',{className:'muted'},'Helios healthcare policy remains a separate custom policy layer; Application Authority remains outside the Gateway-stage count.')
+    ),
+    h(PoliciesP0,props)
+  );
+};
+
+const GuardrailsP0=Guardrails;
+Guardrails=function GuardrailsP1(props){
+  const [argentinaResult,setArgentinaResult]=useState(null);
+  const [argentinaBusy,setArgentinaBusy]=useState(false);
+  async function runArgentinaIdentifier(prompt,label){
+    setArgentinaBusy(true);
+    setArgentinaResult(null);
+    try{
+      const result=await post('/api/demo/guardrail-probe',{
+        app:'clinician',
+        prompt,
+        actorId:'clin-001',
+        patientId:'pat-1001',
+        encounterId:'enc-501',
+        purpose:'lab-review'
+      });
+      setArgentinaResult({label,result});
+    }catch(e){
+      setArgentinaResult({label,result:{decision:'ERROR',error:e.message}});
+    }finally{
+      setArgentinaBusy(false);
+    }
+  }
+  return h('div',null,
+    h(Panel,{className:'attack-panel'},
+      h('div',{className:'mini-heading'},'ARGENTINA SYNTACTIC DLP · WSO2 NATIVE'),
+      h('p',{className:'muted'},'Synthetic demonstration values only. Pattern detection does not perform identity lookup or DNI/CUIL/CUIT checksum validation.'),
+      h('div',{className:'prompt-presets'},
+        h('button',{disabled:argentinaBusy,onClick:()=>runArgentinaIdentifier('Paciente sintético de demostración — DNI 32.456.789','DNI')},
+          h('strong',null,'DNI probe'),h('span',null,'DNI 32.456.789')),
+        h('button',{disabled:argentinaBusy,onClick:()=>runArgentinaIdentifier('Paciente sintético de demostración — CUIL 27-32456789-4','CUIL/CUIT')},
+          h('strong',null,'CUIL/CUIT probe'),h('span',null,'CUIL 27-32456789-4'))
+      ),
+      argentinaResult&&h('div',{className:'layer-result'},
+        h(Pill,{t:tone(argentinaResult.result?.decision)},short(argentinaResult.result?.decision)),
+        h('strong',null,`${argentinaResult.label} · ${argentinaResult.result?.guardrail?.policy||'Gateway result'}`),
+        h('p',null,argentinaResult.result?.guardrail?.reason||argentinaResult.result?.error||'See technical details.'),
+        h(RawDetails,{value:argentinaResult.result,label:'Argentina DLP evidence'})
+      )
+    ),
+    h(GuardrailsP0,props)
+  );
+};
+
+const ExecutiveObservabilityP0=ExecutiveObservability;
+ExecutiveObservability=function ExecutiveObservabilityP1(){
+  const [p1Summary,setP1Summary]=useState(null);
+  const [p1Error,setP1Error]=useState(null);
+  const loadP1=()=>api('/api/observability/executive').then(x=>{setP1Summary(x);setP1Error(null)}).catch(e=>setP1Error(e.message));
+  useEffect(()=>{loadP1();const t=setInterval(loadP1,2500);return()=>clearInterval(t)},[]);
+  const fin=p1Summary?.finOps||{};
+  const money=n=>`$${Number(n||0).toFixed(6)}`;
+  return h('div',null,
+    h(SectionTitle,{
+      eyebrow:'AI ECONOMICS / FINOPS',
+      title:'Safety and consumption governance by application',
+      copy:"We don't only make clinical AI safer; we make its consumption governable."
+    }),
+    h('p',{className:'muted'},fin.disclaimer||'Gateway-accounted or estimated consumption is operational governance data, not the provider invoice.'),
+    h('div',{className:'obs-bottom-grid'},...(fin.applications||[]).map(x=>h(Panel,{key:x.app},
+      h('div',{className:'mini-heading'},x.label),
+      ...[
+        ['Calls',x.calls],
+        ['Input tokens',x.inputTokens],
+        ['Output tokens',x.outputTokens],
+        ['Total tokens',x.totalTokens],
+        ['Average model latency',`${x.averageModelLatencyMs} ms`],
+        ['P95 model latency',`${x.p95ModelLatencyMs} ms`],
+        ['Estimated cost',money(x.estimatedCostUsd)],
+        ['Gateway-accounted consumption',x.gatewayAccountedCostUsd===null?'Not observed yet':money(x.gatewayAccountedCostUsd)],
+        [`Configured budget · ${x.budgetWindow}`,money(x.configuredBudgetUsd)],
+        ['Remaining budget',money(x.remainingBudgetUsd)],
+        ['Consumed',`${x.percentConsumed}%`]
+      ].map(([k,v])=>h('div',{className:'obs-rank',key:k},h('span',null,k),h('strong',null,v))),
+      h(Pill,{t:x.accountingSource==='wso2-native-budget-accounting'?'safe':'neutral'},x.accountingSource),
+      h('p',{className:'muted'},x.note),
+      h('p',{className:'muted'},x.latencyDefinition)
+    ))),
+    p1Error&&h(Pill,{t:'danger'},p1Error),
+    h(ExecutiveObservabilityP0)
+  );
+};
+
+const EvidenceP0=Evidence;
+Evidence=function EvidenceP1(props){
+  const [p1Traces,setP1Traces]=useState([]);
+  const loadP1Traces=()=>api('/api/traces').then(x=>setP1Traces(x.traces||[])).catch(()=>{});
+  useEffect(()=>{loadP1Traces();const t=setInterval(loadP1Traces,2500);return()=>clearInterval(t)},[]);
+  const correlated=p1Traces.filter(x=>x.wso2TraceId&&x.jaegerUrl);
+  return h('div',null,
+    h(SectionTitle,{
+      eyebrow:'DISTRIBUTED TRACE CORRELATION',
+      title:'Helios Evidence ↔ WSO2 Gateway ↔ OpenTelemetry ↔ Jaeger',
+      copy:'A WSO2 trace ID and Jaeger action are shown only when the Gateway was actually invoked. Pre-model blocks never fabricate a WSO2 trace.'
+    }),
+    h(Panel,null,
+      h('div',{className:'mini-heading'},'CORRELATED GATEWAY TRACES'),
+      correlated.length
+        ?h('div',{className:'trace-cards'},correlated.slice(0,8).map(t=>h('div',{className:'trace-card',key:t.traceId},
+          h('div',{className:'trace-facts'},
+            h('div',null,h('small',null,'Helios evidence ID'),h('strong',{className:'mono'},t.traceId)),
+            h('div',null,h('small',null,'WSO2 / OTel trace ID'),h('strong',{className:'mono'},t.wso2TraceId)),
+            h('div',null,h('small',null,'Propagation'),h('strong',null,t.traceCorrelation?.propagation||'W3C traceparent')),
+            h('div',null,h('small',null,'Jaeger'),h('a',{href:t.jaegerUrl,target:'_blank',rel:'noopener noreferrer'},'Open in Jaeger ↗'))
+          )
+        )))
+        :h('p',{className:'muted'},'No Gateway-correlated trace yet. Run a model-bound clinical scenario; pre-model blocks correctly remain without a WSO2 trace.')
+    ),
+    h(EvidenceP0,props)
+  );
+};
+
+function App(){const [page,setPage]=useState('Executive Demo'),[seed,setSeed]=useState(null),[runtime,setRuntime]=useState(null),[health,setHealth]=useState(null),[catalog,setCatalog]=useState(null);const refresh=()=>{api('/api/gateway-status').then(setRuntime).catch(()=>{});api('/api/health').then(setHealth).catch(()=>{});api('/api/demo/catalog').then(setCatalog).catch(()=>{})};useEffect(()=>{refresh();const t=setInterval(refresh,5000);return()=>clearInterval(t)},[]);function navigate(next,payload=null){setSeed(payload);setPage(next);window.scrollTo({top:0,behavior:'smooth'})}const content=useMemo(()=>{if(page==='Executive Demo')return h(ExecutiveDemo,{catalog,runtime,health,onNavigate:navigate});if(page==='Clinician AI')return h(AIWorkspace,{catalog,seed,onSeedConsumed:()=>setSeed(null)});if(page==='Patient AI')return h(AIWorkspace,{patient:true,catalog,seed,onSeedConsumed:()=>setSeed(null)});if(page==='27 Policies')return h(Policies,{catalog,onNavigate:navigate});if(page==='Guardrails')return h(Guardrails,{seed,onSeedConsumed:()=>setSeed(null)});if(page==='Knowledge Lifecycle')return h(KnowledgeLifecycle);if(page==='Role Differences')return h(RoleDifferences);if(page==='Tenant Isolation')return h(TenantIsolation,{catalog});if(page==='Executive Observability')return h(ExecutiveObservability);return h(Evidence,{runtime})},[page,seed,runtime,health,catalog]);return h('div',{className:'app-shell'},h('aside',{className:'sidebar'},h('button',{className:'brand',onClick:()=>navigate('Executive Demo')},h('span',{className:'brand-mark'},'H'),h('span',null,h('strong',null,'HELIOS'),h('small',null,'Governed Clinical AI'))),h('div',{className:'nav-caption'},'VP-DRIVEN DEMO'),h('nav',null,PAGES.map((p,i)=>h('button',{key:p,className:page===p?'active':'',onClick:()=>navigate(p)},h('span',{className:'nav-num'},String(i+1).padStart(2,'0')),h('span',null,p)))),h('div',{className:'side-trust'},h(Icon,{name:'shield'}),h('div',null,h('strong',null,health?.gateway?.endToEnd?'Governed path live':'Checking runtime'),h('small',null,'WSO2 AI Gateway · synthetic patient data')))),h('main',{className:'main'},h('header',{className:'topbar'},h('div',null,h('span',{className:'topbar-label'},'HELIOS / WSO2 AI GATEWAY'),h('strong',null,page)),h(LiveStatus,{runtime,health})),h('div',{className:'page'},content),h('footer',null,'Synthetic healthcare demonstration only · Not medical advice · No autonomous diagnosis, prescribing or order execution')))}
 createRoot(document.getElementById('root')).render(h(App));

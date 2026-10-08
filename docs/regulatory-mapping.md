@@ -1,7 +1,7 @@
 # Regulatory and assurance mapping
 
 **Purpose:** architecture/security mapping for a synthetic demonstration.
-**Last reviewed:** 2026-09-17.
+**Last reviewed:** 2026-10-07.
 **Status:** informational; not legal, regulatory, medical, privacy, or certification advice.
 
 Helios demonstrates technical patterns that can support governance. It does **not** establish compliance, clearance, certification, registration, clinical safety, or fitness for a real healthcare use case.
@@ -15,6 +15,8 @@ Helios demonstrates technical patterns that can support governance. It does **no
 | HIPAA Privacy Rule | United States; rule applicability depends on entity, role, data and activity | permitted uses/disclosures, role-based access, minimum-necessary rule and exceptions | purpose-bound views and data minimization are security/privacy design patterns | **Do not equate Helios purpose minimization with the HIPAA minimum-necessary standard.** HHS states that disclosures to or requests by a healthcare provider for treatment purposes are exempt from the minimum-necessary requirement; internal access/use still requires appropriate role-based policies and the exact rule must be analyzed for the real workflow |
 | HIPAA Security Rule | United States; current rule plus separate proposed strengthening activity | access control, audit controls, integrity, person/entity authentication, transmission security for ePHI | role/scope checks, signed context, trace evidence, TLS Gateway ingress, integrity/provenance fields, redacted observability | synthetic demo architecture does not establish HIPAA Security Rule compliance; risk analysis and regulated-entity safeguards are organization-specific |
 | FDA Clinical Decision Support Software Guidance | United States; **Final guidance January 2026** | criteria for certain non-device CDS vs software functions that remain devices; ability for healthcare professional to independently review basis is one part of statutory analysis | trusted sources/provenance, fact grounding, human approval, explicit non-autonomous framing | Helios is not FDA-cleared. Human review alone does **not** automatically make software non-device CDS. Intended use, function, users and all applicable statutory criteria must be assessed. Patient/caregiver functions may still be device functions |
+| Argentina Ley 25.326 de Protección de los Datos Personales | Argentina; federal personal-data law | health information is sensitive personal data; data quality/finality, security and confidentiality are relevant concepts | synthetic-only data, signed identity/context, tenant/patient boundaries, purpose-based release, DLP, pseudonymous evidence and audit controls | **Architecture mapping only.** The demo does not establish compliance with Ley 25.326; a real deployment requires legal/privacy analysis of the actual processing, actors, purposes, transfers and safeguards |
+| Decreto 98/2023, art. 4 (scope: platforms for electronic/digital prescriptions and teleassistance) | Argentina; health-sector regulatory decree within that scope | security/privacy safeguards and AI used as support for professional decisions under health-professional supervision | non-autonomous model role, authoritative clinical sources, server-side tool authorization, human-gated clinical actions and auditable evidence | **Scope matters.** This mapping does not assert that Decreto 98/2023 governs every healthcare AI use case, nor that Helios is compliant or clinically validated |
 | LGPD (Lei 13.709/2018) | Brazil; federal data-protection law | health data is sensitive personal data; purpose, necessity, security and applicable legal bases/safeguards matter | synthetic-only data, tenant/context boundaries, purpose views, DLP, pseudonymous trace identifiers | demo use of synthetic data does not establish LGPD compliance; real processing needs controller/operator, legal-basis, data-subject, security, sharing, transfer and sector-specific analysis |
 | Anvisa RDC 657/2022 + Anvisa SaMD Q&A | Brazil; RDC addresses regularization of Software as a Medical Device; official Q&A published 2022 | whether software is SaMD and its regularization/classification depend on intended use and function | demo explicitly avoids claiming diagnosis/prescribing authority and labels fixtures demonstrative | Helios is **not** registered/notified with Anvisa and is not represented as SaMD. A real product requires current intended-use/classification assessment against Anvisa rules and guidance |
 | HL7 FHIR R5 Security & Privacy guidance | International interoperability standard; R5 current published specification page reviewed | authorization/access context, audit/provenance, signatures, secure transport, privacy/security building blocks | FHIR-inspired synthetic resource shapes, provenance/trust metadata, TLS, audit/evidence, context binding | FHIR does not itself provide a complete security protocol; this demo is FHIR-inspired and does not claim full FHIR conformance |
@@ -31,8 +33,16 @@ The FDA's January 2026 final CDS guidance clarifies its interpretation of the st
 
 LGPD Article 5 classifies data concerning health as sensitive personal data. Anvisa RDC 657/2022 addresses software-as-medical-device regularization. A production Brazilian deployment therefore needs separate privacy/data-protection analysis and medical-device intended-use/classification analysis; one does not substitute for the other.
 
+## Argentine health-data / supervised-AI nuance
+
+Ley 25.326 Article 2 includes information concerning health within the definition of sensitive personal data. Articles 4, 8, 9 and 10 address, among other things, purpose/data quality, health-data processing, security measures and confidentiality. Helios maps technical controls to these concepts but does **not** claim legal compliance.
+
+Decreto 98/2023 must be described with its scope intact. Article 4 addresses platforms used for electronic/digital prescriptions and teleassistance. Within that regulated context, paragraph (k) states that AI use is to support professional decision-making and requires health-professional supervision. Helios' human-gated action model is therefore a useful architectural illustration of supervised AI, not a statement that the decree universally applies to every AI workflow or that the demo satisfies all applicable requirements.
+
 ## Official sources reviewed
 
+- Argentina Ley 25.326: https://www.argentina.gob.ar/normativa/nacional/ley-25326-64790/actualizacion
+- Argentina Decreto 98/2023: https://www.argentina.gob.ar/normativa/nacional/decreto-98-2023-380005/texto
 - OWASP Top 10 for LLM Applications 2025: https://genai.owasp.org/resource/owasp-top-10-for-llm-applications-2025/
 - NIST AI RMF 1.0: https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-ai-rmf-10
 - NIST AI RMF / revision status: https://www.nist.gov/itl/ai-risk-management-framework

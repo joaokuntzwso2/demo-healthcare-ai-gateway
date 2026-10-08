@@ -134,7 +134,7 @@ const server=http.createServer(async(req,res)=>{try{
       'content-type':mime[extname(path)]||'application/octet-stream',
       'cache-control':extname(path)==='.html'?'no-store':'public, max-age=300',
       'x-content-type-options':'nosniff',
-      'content-security-policy':"default-src 'self' https://esm.sh; script-src 'self' https://esm.sh; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-src http://localhost:3000; frame-ancestors 'none'"
+      'content-security-policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-src http://localhost:3000; frame-ancestors 'none'"
     });
     return res.end(data);
   }catch{return json(res,404,{error:'Not found'});}

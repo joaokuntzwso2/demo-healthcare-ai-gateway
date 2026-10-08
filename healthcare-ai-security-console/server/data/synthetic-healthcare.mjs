@@ -1,7 +1,8 @@
 export const organizations = {
   'helios-north': { id: 'helios-north', name: 'Helios North Teaching Hospital', jurisdiction: 'US', type: 'academic-medical-center' },
   'helios-west': { id: 'helios-west', name: 'Helios West Community Network', jurisdiction: 'US', type: 'integrated-delivery-network' },
-  'aurora-br': { id: 'aurora-br', name: 'Aurora Saúde Integrada', jurisdiction: 'BR', type: 'integrated-care' }
+  'aurora-br': { id: 'aurora-br', name: 'Aurora Saúde Integrada', jurisdiction: 'BR', type: 'integrated-care' },
+  'rio-plata-ar': { id: 'rio-plata-ar', name: 'Hospital Universitario Río de la Plata', jurisdiction: 'AR', type: 'academic-medical-center' }
 };
 
 const physicianScopes=['chart:summary','labs:read','medications:read','allergies:read','conditions:read','knowledge:read','note:draft','clinical-action:request','approval:submit','medication-safety:read'];
@@ -20,7 +21,8 @@ export const workforce = {
   'west-001': { id:'west-001',tenant:'helios-west',display:'Dr. Maya Patel',role:'attending-physician',specialty:'Family Medicine',scopes:[...physicianScopes] },
   'clin-br-001': { id:'clin-br-001',tenant:'aurora-br',display:'Dra. Marina Silva',role:'attending-physician',specialty:'Clínica Médica',scopes:[...physicianScopes] },
   'cardio-br-001': { id:'cardio-br-001',tenant:'aurora-br',display:'Dr. Rafael Almeida',role:'attending-physician',specialty:'Cardiologia',scopes:[...physicianScopes] },
-  'pharm-br-001': { id:'pharm-br-001',tenant:'aurora-br',display:'Camila Rocha, Farm.',role:'clinical-pharmacist',specialty:'Farmácia Clínica',scopes:['medications:read','allergies:read','labs:read','conditions:read','knowledge:read','medication-safety:read'] }
+  'pharm-br-001': { id:'pharm-br-001',tenant:'aurora-br',display:'Camila Rocha, Farm.',role:'clinical-pharmacist',specialty:'Farmácia Clínica',scopes:['medications:read','allergies:read','labs:read','conditions:read','knowledge:read','medication-safety:read'] },
+  'clin-002': { id:'clin-002',tenant:'rio-plata-ar',display:'Dra. Valentina Suárez',role:'attending-physician',specialty:'Clínica Médica',scopes:[...physicianScopes] }
 };
 
 export const careAssignments = {
@@ -37,7 +39,8 @@ export const careAssignments = {
   'west-001': ['pat-west-3001'],
   'clin-br-001': ['pat-br-2001'],
   'cardio-br-001': ['pat-br-2002'],
-  'pharm-br-001': ['pat-br-2001']
+  'pharm-br-001': ['pat-br-2001'],
+  'clin-002': ['pat-3001']
 };
 
 export const tenantScopedPatientIdentifiers=[
@@ -165,6 +168,31 @@ export const patients = {
     medications:[],allergies:[],labs:[{id:'lab-w1',code:'SYNTH-HGB',display:'Hemoglobin',value:13.1,unit:'g/dL',observedAt:'2026-09-11T11:00:00Z',flag:'normal-demo',source:'LAB-SYSTEM'}],
     encounters:[{id:'enc-west-301',type:'outpatient',start:'2026-09-11T11:30:00Z',reason:'Primary-care follow-up',clinician:'west-001',source:'EHR-ENCOUNTERS'}],
     notes:[],referrals:[],carePlans:[],appointments:[{id:'apt-w1',date:'2026-10-10T11:00:00Z',clinic:'Helios West Primary Care',status:'booked'}],approvedInstructions:[{id:'inst-w1',text:'Bring your symptom diary to the next primary-care visit.',approvedBy:'west-001'}]
+  },
+  'pat-3001': {
+    id:'pat-3001',tenant:'rio-plata-ar',pseudonym:'FHIR-AR-P-4C82A1',name:'Lucía Fernández',birthYear:1966,
+    conditions:[
+      {id:'cond-ar1',code:'SYNTH-HTN',display:'Hipertensión — fixture sintético',status:'active',source:'EHR-CONDITIONS'},
+      {id:'cond-ar2',code:'SYNTH-CKD',display:'Enfermedad renal crónica — fixture sintético',status:'active',source:'EHR-CONDITIONS'}
+    ],
+    medications:[
+      {id:'med-ar1',code:'SYNTH-RENAL-MED-A',display:'Medicamento sintético para revisión renal',dose:'1 unidad-demo diaria',status:'active',source:'EHR-MEDICATIONS'}
+    ],
+    allergies:[],
+    labs:[
+      {id:'lab-ar-k-20261005',code:'SYNTH-K',display:'Potasio',value:5.6,unit:'mmol/L',observedAt:'2026-10-05T11:20:00Z',flag:'high-demo',source:'LAB-SYSTEM'},
+      {id:'lab-ar-cr-20261005',code:'SYNTH-CREAT',display:'Creatinina',value:1.9,unit:'mg/dL',observedAt:'2026-10-05T11:20:00Z',flag:'high-demo',source:'LAB-SYSTEM'},
+      {id:'lab-ar-egfr-20261005',code:'SYNTH-EGFR',display:'Filtrado glomerular estimado',value:38,unit:'mL/min/1.73m2',observedAt:'2026-10-05T11:20:00Z',flag:'low-demo',source:'LAB-SYSTEM'},
+      {id:'lab-ar-k-20260714',code:'SYNTH-K',display:'Potasio',value:4.7,unit:'mmol/L',observedAt:'2026-07-14T10:00:00Z',flag:'normal-demo',source:'LAB-SYSTEM'},
+      {id:'lab-ar-cr-20260714',code:'SYNTH-CREAT',display:'Creatinina',value:1.5,unit:'mg/dL',observedAt:'2026-07-14T10:00:00Z',flag:'review-demo',source:'LAB-SYSTEM'},
+      {id:'lab-ar-egfr-20260714',code:'SYNTH-EGFR',display:'Filtrado glomerular estimado',value:50,unit:'mL/min/1.73m2',observedAt:'2026-07-14T10:00:00Z',flag:'review-demo',source:'LAB-SYSTEM'}
+    ],
+    encounters:[{id:'enc-arg-1',type:'outpatient',start:'2026-10-05T12:00:00Z',reason:'Revisión clínica y tendencia de función renal',clinician:'clin-002',source:'EHR-ENCOUNTERS'}],
+    notes:[{id:'note-ar1',encounter:'enc-arg-1',text:'Nota sintética: revisión de tendencia renal; cualquier decisión terapéutica permanece bajo autoridad profesional.',author:'clin-002',source:'EHR-NOTES'}],
+    referrals:[],
+    carePlans:[{id:'cp-ar1',status:'active',text:'Plan sintético de seguimiento clínico y revisión de laboratorio.',source:'EHR-CAREPLAN'}],
+    appointments:[{id:'apt-ar1',date:'2026-10-14T14:00:00-03:00',clinic:'Clínica Médica Río de la Plata',status:'booked'}],
+    approvedInstructions:[{id:'inst-ar1',text:'Llevar la lista actualizada de medicamentos y los estudios solicitados a la próxima consulta.',approvedBy:'clin-002'}]
   },
   'pat-br-2001': {
     id:'pat-br-2001',tenant:'aurora-br',pseudonym:'AS-P-A81C09',name:'Carlos Ferreira',birthYear:1969,

@@ -55,6 +55,27 @@
     ]
   },
   {
+    "name": "regex-guardrail",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {
+          "request": {
+            "enabled": true,
+            "regex": "(?i)(?:\\bDNI\\s*[:#-]?\\s*[0-9]{1,2}(?:\\.[0-9]{3}){2}\\b|\\b(?:CUIL|CUIT)\\s*[:#-]?\\s*[0-9]{2}-[0-9]{8}-[0-9]\\b)",
+            "jsonPath": "$.messages[-1].content",
+            "invert": true,
+            "showAssessment": false
+          }
+        }
+      }
+    ]
+  },
+  {
     "name": "custom-jailbreak-authority-bypass-guardrail",
     "version": "v1",
     "paths": [
@@ -292,6 +313,39 @@
   },
   {
     "name": "custom-structured-clinical-output-guard",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {}
+      }
+    ]
+  },
+  {
+    "name": "llm-cost-based-ratelimit",
+    "version": "v1",
+    "paths": [
+      {
+        "path": "/chat/completions",
+        "methods": [
+          "POST"
+        ],
+        "params": {
+          "budgetLimits": [
+            {
+              "amount": 0.02,
+              "duration": "24h"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "llm-cost",
     "version": "v1",
     "paths": [
       {

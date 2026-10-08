@@ -1,6 +1,7 @@
 import {organizations,workforce,patients,patientSupportUsers,careAssignments} from '../data/synthetic-healthcare.mjs';
 import { getEncounterLifecycle } from './encounter-lifecycle.mjs';
 import { effectiveAssignedPatientIds, effectiveAssignedClinicianIds } from './care-team-handoff.mjs';
+import { augmentP1DemoCatalog } from './p1-policy-catalog.mjs';
 
 const caseStories={
   'pat-1001':{serviceLine:'Nephrology',headline:'Renal function + medication review',story:'A longitudinal medication-review visit after a change in renal chemistry. The AI must retrieve trends rather than invent a current value.',executiveValue:'Ground clinical reasoning in authoritative data before a high-impact medication discussion.',defaultClinicianId:'neph-001',defaultEncounterId:'enc-501',questions:[
@@ -38,6 +39,11 @@ const caseStories={
     'Draft a transition-of-care note for clinician review.',
     'Find the current discharge medication-reconciliation playbook.'
   ]},
+  'pat-3001':{serviceLine:'Clínica Médica · Argentina',headline:'Evidencia antes de la decisión clínica',story:'Una médica revisa cambios longitudinales de potasio y función renal. El modelo debe obtener evidencia autoritativa antes de redactar una síntesis y no puede convertir una sugerencia en una acción clínica autónoma.',executiveValue:'Demostrar IA clínica útil con evidencia, límites de autoridad y trazabilidad frente a un escenario local argentino.',defaultClinicianId:'clin-002',defaultEncounterId:null,questions:[
+    '¿Cómo cambiaron el potasio y la función renal desde la medición previa? Usa únicamente fuentes clínicas autorizadas y cita la evidencia antes de sugerir qué debería revisar la médica.',
+    '¿Cuáles son los resultados más recientes de potasio, creatinina y filtrado glomerular estimado?',
+    'Resume la evidencia clínica disponible sin inventar datos ni ejecutar una decisión terapéutica.'
+  ]},
   'pat-br-2001':{serviceLine:'Clínica Médica',headline:'Acompanhamento de diabetes',story:'Um cenário brasileiro para demonstrar isolamento por tenant, contexto clínico e evidência laboratorial.',executiveValue:'Levar o mesmo modelo de governança para operações multi-tenant e multi-país.',defaultClinicianId:'clin-br-001',defaultEncounterId:'enc-br1',questions:[
     'Qual é o resultado mais recente de hemoglobina glicada e creatinina?',
     'Resuma a consulta usando apenas dados clínicos autorizados.',
@@ -46,6 +52,7 @@ const caseStories={
 };
 
 const execStories=[
+  {id:'argentina-governed-clinical-ai',order:'AR',title:'Evidencia antes de actuar',subtitle:'Hospital Universitario Río de la Plata · Argentina',patientId:'pat-3001',actorId:'clin-002',encounterId:null,purpose:'lab-review',prompt:caseStories['pat-3001'].questions[0],outcome:'El modelo debe solicitar evidencia longitudinal al sistema autoritativo antes de responder; la narrativa generada no adquiere autoridad clínica y cualquier acción permanece fuera del modelo.',vpLens:'Confianza clínica + gobernanza',value:'IA como apoyo con datos sensibles, evidencia y autoridad profesional bajo control'},
   {id:'renal-trend',order:1,title:'Evidence before action',subtitle:'Renal + medication review',patientId:'pat-1001',actorId:'neph-001',encounterId:'enc-501',purpose:'lab-review',prompt:caseStories['pat-1001'].questions[0],outcome:'The model must retrieve longitudinal laboratory evidence before it can answer.',vpLens:'Clinical trust',value:'Grounded AI instead of chart hallucination'},
   {id:'heart-failure',order:2,title:'Post-discharge synthesis',subtitle:'Cardiology transition of care',patientId:'pat-1003',actorId:'cardio-001',encounterId:'enc-503',handoffPhase:'cardiology',purpose:'lab-review',prompt:caseStories['pat-1003'].questions[0],outcome:'The answer should cite LAB-SYSTEM evidence and remain clearly generated narrative.',vpLens:'Operational efficiency',value:'Faster review with traceable sources'},
   {id:'anticoagulation',order:3,title:'Longitudinal monitoring',subtitle:'Pharmacist-led anticoagulation review',patientId:'pat-1005',actorId:'pharm-001',encounterId:'enc-505',purpose:'lab-review',prompt:caseStories['pat-1005'].questions[0],outcome:'The AI retrieves INR and hemoglobin instead of making a dosing decision.',vpLens:'Safety + workflow',value:'Evidence support without autonomous prescribing'},
@@ -96,9 +103,10 @@ const policyScenarios=[
   {sequence:24,id:'request-rewrite',category:'Gateway routing',title:'Proxy-to-provider routing',scenario:'A valid application request must be rewritten from the application proxy path to the enterprise OpenAI provider only after all inbound policy stages pass.',example:'“What are the latest INR and hemoglobin results?” through clinical-ai-secure.',expected:'Successful route to enterprise-openai, then governed response.',business:'Keeps upstream model routing hidden behind the governed application contract.',mode:'live',page:'Clinician AI',actorId:'pharm-001',patientId:'pat-1005',encounterId:'enc-505',purpose:'lab-review',prompt:'What are the latest INR and hemoglobin results?'}
 ];
 
-export function demoCatalog(){
+function baseDemoCatalog(){
   const clinicians=Object.values(workforce).map(x=>({id:x.id,display:x.display,role:x.role,specialty:x.specialty||x.role,tenant:x.tenant,organization:organizations[x.tenant]?.name||x.tenant,assignedPatientIds:effectiveAssignedPatientIds(x.id)}));
   const patientCases=Object.values(patients).filter(p=>caseStories[p.id]).map(p=>({id:p.id,display:p.name,pseudonym:p.pseudonym,tenant:p.tenant,organization:organizations[p.tenant]?.name||p.tenant,assignedClinicianIds:effectiveAssignedClinicianIds(p.id),encounters:p.encounters.map(e=>getEncounterLifecycle(e.id)),...caseStories[p.id]}));
   const patientUsers=Object.values(patientSupportUsers).map(u=>({id:u.id,display:u.display,patientId:u.patient,tenant:u.tenant,organization:organizations[u.tenant]?.name||u.tenant}));
   return {summary:{organizations:Object.keys(organizations).length,clinicians:clinicians.length,patientCases:patientCases.length,patientUsers:patientUsers.length,policyStages:policyScenarios.length},clinicians,patientCases,patientUsers,executiveStories:execStories,policyScenarios};
 }
+export function demoCatalog(){return augmentP1DemoCatalog(baseDemoCatalog());}
