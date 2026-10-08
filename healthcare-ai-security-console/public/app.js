@@ -39,7 +39,7 @@ function ExecutiveDemo({catalog,runtime,health,onNavigate}){
         h('p',null,'Helios demuestra cómo un LLM real puede asistir un flujo de salud mientras identidad, datos del paciente, herramientas, autoridad de acción y auditoría permanecen determinísticos y controlados alrededor de WSO2 AI Gateway.'),
         h('div',{className:'hero-actions'},
           h(Button,{onClick:()=>stories[0]&&onNavigate('Clinician AI',stories[0])},'Ejecutar historia Argentina'),
-          h(Button,{kind:'secondary',onClick:()=>onNavigate('27 Policies')},'Explorar los 24 controles')
+          h(Button,{kind:'secondary',onClick:()=>onNavigate('27 Policies')},'Explorar los 27 controles')
         )
       ),
       h(Panel,{className:'hero-runtime'},
@@ -790,27 +790,29 @@ function Policies({catalog,onNavigate}){
   const cats=['All',...new Set(all.map(x=>x.category))];
   const [cat,setCat]=useState('All');
   const shown=cat==='All'?all:all.filter(x=>x.category===cat);
-  const nativeIds=new Set(['api-key-auth','request-rewrite']);
-  const nativeCount=all.filter(x=>nativeIds.has(x.id)).length;
-  const extensionCount=all.length-nativeCount;
-  const origin=p=>nativeIds.has(p.id)?'WSO2 Native':'Helios Domain Policy';
+  const provenance=catalog?.policyProvenance||{};
+  const origin=p=>p.provenance||'Unspecified provenance';
+  const gatewayStages=provenance.gatewayStages??all.length;
+  const nativeCount=provenance.wso2Native??all.filter(x=>origin(x)==='WSO2 Native').length;
+  const extensionCount=provenance.heliosDomainPolicy??all.filter(x=>origin(x)==='Helios Domain Policy').length;
+  const nativeStageNames=all.filter(x=>origin(x)==='WSO2 Native').map(x=>x.id).join(' · ');
 
   return h('div',null,
     h(SectionTitle,{
       eyebrow:'27-STAGE POLICY CHAIN',
       title:'WSO2 platform enforcement + healthcare-specific governance',
-      copy:'The deployed chain combines WSO2 built-in Gateway stages with Helios healthcare-domain extensions. Application and human authority remain outside the model and outside the 24 Gateway stages.'
+      copy:`The deployed chain combines WSO2-native Gateway stages with Helios healthcare-domain extensions. Application and human authority remain outside the model and outside the ${gatewayStages} Gateway stages.`
     }),
     h('div',{className:'policy-summary'},
-      h(Panel,null,h('small',null,'TOTAL STAGES'),h('strong',null,all.length),h('span',null,'ordered controls')),
-      h(Panel,null,h('small',null,'WSO2 NATIVE IN THIS CHAIN'),h('strong',null,nativeCount),h('span',null,'api-key-auth + request-rewrite')),
-      h(Panel,null,h('small',null,'HELIOS DOMAIN EXTENSIONS'),h('strong',null,extensionCount),h('span',null,'custom Go policy stages')),
+      h(Panel,null,h('small',null,'TOTAL STAGES'),h('strong',null,gatewayStages),h('span',null,'ordered controls')),
+      h(Panel,null,h('small',null,'WSO2 NATIVE IN THIS CHAIN'),h('strong',null,nativeCount),h('span',null,nativeStageNames||'derived from deployed chain')),
+      h(Panel,null,h('small',null,'HELIOS DOMAIN POLICY'),h('strong',null,extensionCount),h('span',null,'custom healthcare policy stages')),
       h(Panel,null,h('small',null,'APPLICATION AUTHORITY'),h('strong',null,'BFF + Human'),h('span',null,'tool authorization and clinical approval'))
     ),
     h(Panel,{className:'case-brief'},
       h('small',null,'PRODUCT POSITIONING'),
       h('strong',null,'WSO2 provides the AI/API governance and enforcement platform; Helios layers healthcare-specific policy on top.'),
-      h('p',null,'The labels below describe the provenance of the 24 stages actually deployed by this demo. They do not imply that these two stages are the only native capabilities of WSO2 AI Gateway.')
+      h('p',null,`The labels below are derived from the deployed ${gatewayStages}-stage chain. They describe provenance in this demo and do not imply that these are the only native capabilities of WSO2 AI Gateway.`)
     ),
     h('div',{className:'policy-filters'},
       cats.map(x=>h('button',{key:x,className:cat===x?'active':'',onClick:()=>setCat(x)},x))
@@ -822,7 +824,7 @@ function Policies({catalog,onNavigate}){
           h('div',null,h('small',null,p.category),h('h3',null,p.title)),
           h('div',null,
             h(Pill,{t:p.mode==='live'?'safe':'neutral'},p.mode==='live'?'Live':'Walkthrough'),
-            h(Pill,{t:nativeIds.has(p.id)?'safe':'neutral'},origin(p))
+            h(Pill,{t:origin(p)==='WSO2 Native'?'safe':'neutral'},origin(p))
           )
         ),
         h('code',null,p.id),
@@ -1131,28 +1133,6 @@ function Evidence({runtime}){const [traces,setTraces]=useState([]),[filter,setFi
 // P1 extends the proven P0 components instead of rewriting them. This keeps
 // all existing healthcare workflows intact and makes the event additions
 // independently removable/auditable.
-
-const PoliciesP0=Policies;
-Policies=function PoliciesP1(props){
-  const provenance=props.catalog?.policyProvenance||{};
-  const policies=props.catalog?.policyScenarios||[];
-  const native=policies.filter(x=>x.provenance==='WSO2 Native');
-  const helios=policies.filter(x=>x.provenance==='Helios Domain Policy');
-  return h('div',null,
-    h(Panel,{className:'policy-summary'},
-      h('div',{className:'mini-heading'},'POLICY PROVENANCE'),
-      h('div',{className:'policy-summary'},
-        h(Panel,null,h('small',null,'TOTAL GATEWAY STAGES'),h('strong',null,provenance.gatewayStages??policies.length),h('span',null,'ordered controls')),
-        h(Panel,null,h('small',null,'WSO2 NATIVE'),h('strong',null,provenance.wso2Native??native.length),h('span',null,'Gateway stages')),
-        h(Panel,null,h('small',null,'HELIOS DOMAIN POLICY'),h('strong',null,provenance.heliosDomainPolicy??helios.length),h('span',null,'custom healthcare stages')),
-        h(Panel,null,h('small',null,'APPLICATION AUTHORITY'),h('strong',null,'Separate'),h('span',null,'not counted as a Gateway stage'))
-      ),
-      h('p',{className:'muted'},'WSO2-native stages: ',native.map(x=>x.id).join(' · ')||'—'),
-      h('p',{className:'muted'},'Helios healthcare policy remains a separate custom policy layer; Application Authority remains outside the Gateway-stage count.')
-    ),
-    h(PoliciesP0,props)
-  );
-};
 
 const GuardrailsP0=Guardrails;
 Guardrails=function GuardrailsP1(props){
